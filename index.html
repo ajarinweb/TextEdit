@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TextEdit — macOS Tahoe Style</title>
+    <style>
+        /* RESET */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1c1c1e;
+            font-family: -apple-system, 'SF Pro Text', 'Inter', Helvetica, Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== GLOBAL MENU BAR (terpisah dari jendela) ===== */
+        .global-menu-bar {
+            background: rgba(30, 30, 34, 0.75);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 28px;
+            display: flex;
+            gap: 28px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #e8e8ef;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .menu-item {
+            position: relative;
+            padding: 4px 12px;
+            border-radius: 8px;
+            cursor: default;
+            transition: background 0.1s;
+        }
+
+        .menu-item:hover {
+            background: rgba(100, 110, 140, 0.5);
+        }
+
+        /* Dropdown */
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(28, 28, 32, 0.94);
+            backdrop-filter: blur(40px);
+            border: 0.5px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 8px 0;
+            min-width: 220px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-6px);
+            transition: opacity 0.12s ease, transform 0.12s ease;
+            pointer-events: none;
+            z-index: 200;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+
+        .menu-item:hover .dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .dropdown-item {
+            padding: 5px 20px;
+            font-size: 13px;
+            color: #f0f0f5;
+            cursor: default;
+            transition: background 0.08s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dropdown-item:hover {
+            background: #2c6eb0;
+        }
+
+        .divider {
+            height: 1px;
+            background: rgba(255,255,255,0.15);
+            margin: 6px 12px;
+        }
+
+        .shortcut-hint {
+            font-size: 11px;
+            color: #9a9aa5;
+            font-family: monospace;
+        }
+
+        /* ===== JENDELA UTAMA (workspace) ===== */
+        .window-workspace {
+            flex: 1;
+            margin: 24px 32px;
+            background: rgba(28, 28, 32, 0.75);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border-radius: 16px;
+            border: 0.5px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* === HEADER JENDELA (Title Bar + Toolbar) === */
+        .window-header {
+            background: rgba(36, 36, 40, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 0.5px solid rgba(255,255,255,0.1);
+        }
+
+        /* Title Bar dengan traffic light */
+        .title-bar {
+            padding: 12px 20px 8px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .traffic-lights {
+            display: flex;
+            gap: 8px;
+        }
+
+        .traffic {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: 0.1s;
+        }
+
+        .red { background: #ff5f56; }
+        .yellow { background: #ffbd2e; }
+        .green { background: #27c93f; }
+
+        .window-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e0e0e8;
+            letter-spacing: -0.2px;
+            flex: 1;
+            text-align: center;
+            margin-right: 48px; /* biar seimbang dengan traffic light */
+        }
+
+        /* Toolbar (ikon-ikon TextEdit) */
+        .toolbar {
+            padding: 8px 16px 12px 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-top: 0.5px solid rgba(255,255,255,0.05);
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 4px;
+            background: rgba(0,0,0,0.25);
+            padding: 4px 8px;
+            border-radius: 28px;
+            border: 0.3px solid rgba(255,255,255,0.1);
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: none;
+            color: #dddde6;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 20px;
+            cursor: default;
+            transition: all 0.1s;
+        }
+
+        .tool-btn:hover {
+            background: rgba(100, 110, 140, 0.6);
+        }
+
+        .separator {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            margin: 0 6px;
+        }
+
+        /* === AREA EDITOR === */
+        .editor-container {
+            flex: 1;
+            padding: 28px 36px;
+            overflow-y: auto;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #f0f0f8;
+            font-family: 'SF Mono', 'JetBrains Mono', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.55;
+            resize: none;
+            caret-color: #3a8cff;
+        }
+
+        textarea::selection {
+            background: #3a6ea5;
+        }
+
+        /* === STATUS BAR === */
+        .status-bar {
+            padding: 6px 24px;
+            background: rgba(24, 24, 28, 0.6);
+            backdrop-filter: blur(12px);
+            border-top: 0.5px solid rgba(255,255,255,0.08);
+            font-size: 11px;
+            color: #9a9aa5;
+            display: flex;
+            justify-content: space-between;
+            font-family: monospace;
+            flex-shrink: 0;
+        }
+
+        /* Scrollbar kustom */
+        ::-webkit-scrollbar {
+            width: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(150, 160, 180, 0.5);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(200, 210, 230, 0.7);
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: rgba(32, 32, 36, 0.94);
+            backdrop-filter: blur(36px);
+            border-radius: 12px;
+            border: 0.5px solid rgba(255,255,255,0.2);
+            padding: 6px 0;
+            min-width: 180px;
+            z-index: 10000;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            animation: fadeIn 0.08s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96);}
+            to { opacity: 1; transform: scale(1);}
+        }
+
+        .context-item {
+            padding: 6px 18px;
+            font-size: 13px;
+            cursor: default;
+            transition: background 0.08s;
+        }
+
+        .context-item:hover {
+            background: #2c6eb0;
+        }
+    </style>
+</head>
+<body>
+    <!-- GLOBAL MENU BAR (terpisah) -->
+    <div class="global-menu-bar">
+        <div class="menu-item">🍎 TextEdit
+            <div class="dropdown">
+                <div class="dropdown-item" id="aboutApp">About TextEdit</div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="preferences">Preferences...</div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="services">Services</div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="hideApp">Hide TextEdit</div>
+                <div class="dropdown-item" id="hideOthers">Hide Others</div>
+                <div class="dropdown-item" id="showAll">Show All</div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="quitApp">Quit TextEdit</div>
+            </div>
+        </div>
+        <div class="menu-item">File
+            <div class="dropdown">
+                <div class="dropdown-item" id="newDoc">New <span class="shortcut-hint">⌘N</span></div>
+                <div class="dropdown-item" id="openDoc">Open... <span class="shortcut-hint">⌘O</span></div>
+                <div class="dropdown-item" id="saveDoc">Save <span class="shortcut-hint">⌘S</span></div>
+                <div class="dropdown-item" id="saveAs">Save As...</div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="rename">Rename...</div>
+                <div class="dropdown-item" id="moveTo">Move To...</div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="closeWindow">Close Window <span class="shortcut-hint">⌘W</span></div>
+            </div>
+        </div>
+        <div class="menu-item">Edit
+            <div class="dropdown">
+                <div class="dropdown-item" id="editUndo">Undo <span class="shortcut-hint">⌘Z</span></div>
+                <div class="dropdown-item" id="editRedo">Redo <span class="shortcut-hint">⌘⇧Z</span></div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="editCut">Cut <span class="shortcut-hint">⌘X</span></div>
+                <div class="dropdown-item" id="editCopy">Copy <span class="shortcut-hint">⌘C</span></div>
+                <div class="dropdown-item" id="editPaste">Paste <span class="shortcut-hint">⌘V</span></div>
+                <div class="dropdown-item" id="pasteMatchStyle">Paste and Match Style <span class="shortcut-hint">⌘⇧V</span></div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="selectAll">Select All <span class="shortcut-hint">⌘A</span></div>
+            </div>
+        </div>
+        <div class="menu-item">Format
+            <div class="dropdown">
+                <div class="dropdown-item" id="makePlainText">Make Plain Text <span class="shortcut-hint">⌘⇧T</span></div>
+                <div class="dropdown-item" id="toggleWrapLines">Wrap Lines <span class="shortcut-hint">⌘⇧W</span></div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="fontBigger">Bigger <span class="shortcut-hint">⌘+</span></div>
+                <div class="dropdown-item" id="fontSmaller">Smaller <span class="shortcut-hint">⌘-</span></div>
+            </div>
+        </div>
+        <div class="menu-item">View
+            <div class="dropdown">
+                <div class="dropdown-item" id="showStatusBar">Show Status Bar</div>
+                <div class="dropdown-item" id="hideStatusBar">Hide Status Bar</div>
+                <div class="divider"></div>
+                <div class="dropdown-item" id="actualSize">Actual Size <span class="shortcut-hint">⌘0</span></div>
+            </div>
+        </div>
+        <div class="menu-item">Window
+            <div class="dropdown">
+                <div class="dropdown-item" id="minimize">Minimize <span class="shortcut-hint">⌘M</span></div>
+                <div class="dropdown-item" id="zoomWindow">Zoom</div>
+                <div class="dropdown-item" id="bringAllFront">Bring All to Front</div>
+            </div>
+        </div>
+        <div class="menu-item">Help
+            <div class="dropdown">
+                <div class="dropdown-item" id="helpSearch">TextEdit Help</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JENDELA WORKSPACE -->
+    <div class="window-workspace">
+        <!-- Header: Title Bar + Toolbar -->
+        <div class="window-header">
+            <div class="title-bar">
+                <div class="traffic-lights">
+                    <div class="traffic red"></div>
+                    <div class="traffic yellow"></div>
+                    <div class="traffic green"></div>
+                </div>
+                <div class="window-title">Untitled</div>
+                <div style="width: 48px;"></div> <!-- spacer untuk keseimbangan -->
+            </div>
+            <div class="toolbar">
+                <div class="tool-group">
+                    <span class="tool-btn" id="stylePlain">Plain</span>
+                    <span class="tool-btn" id="styleBold">Bold</span>
+                    <span class="tool-btn" id="styleItalic">Italic</span>
+                </div>
+                <div class="separator"></div>
+                <div class="tool-group">
+                    <span class="tool-btn" id="alignLeft">⫼</span>
+                    <span class="tool-btn" id="alignCenter">⫼⫼</span>
+                    <span class="tool-btn" id="alignRight">⫼⫼⫼</span>
+                </div>
+                <div class="separator"></div>
+                <div class="tool-group">
+                    <span class="tool-btn" id="listBullet">• List</span>
+                    <span class="tool-btn" id="listNumber">1. List</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Area teks -->
+        <div class="editor-container">
+            <textarea id="editor" placeholder="Ketik atau tempel teks di sini...&#10;&#10;Gunakan 'Paste and Match Style' (⌘⇧V) untuk membersihkan semua format dan karakter tersembunyi."></textarea>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">
+            <span id="stats">0 karakter, 0 baris</span>
+            <span id="modeBadge">Teks Biasa</span>
+        </div>
+    </div>
+
+    <script>
+        // ========== ELEMEN ==========
+        const editor = document.getElementById('editor');
+        const statsSpan = document.getElementById('stats');
+        const modeBadge = document.getElementById('modeBadge');
+        let statusVisible = true;
+
+        // ========== STERILISASI TEKS ==========
+        function sanitizePlain(raw) {
+            return raw.replace(/[\u200B-\u200D\uFEFF]/g, '')
+                      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+                      .replace(/\r\n/g, '\n');
+        }
+
+        function updateStats() {
+            const txt = editor.value;
+            const chars = txt.length;
+            const lines = txt.split(/\r?\n/).length;
+            statsSpan.innerText = `${chars} karakter, ${lines} baris`;
+        }
+
+        editor.addEventListener('input', updateStats);
+        editor.addEventListener('keyup', updateStats);
+        updateStats();
+
+        // ========== MENU FILE ==========
+        document.getElementById('newDoc').addEventListener('click', () => {
+            if (confirm('Buat dokumen baru? Teks saat ini akan hilang.')) {
+                editor.value = '';
+                updateStats();
+                document.querySelector('.window-title').innerText = 'Untitled';
+            }
+        });
+        document.getElementById('openDoc').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt,.md';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    let content = ev.target.result;
+                    content = sanitizePlain(content);
+                    editor.value = content;
+                    updateStats();
+                    document.querySelector('.window-title').innerText = file.name;
+                };
+                reader.readAsText(file, 'UTF-8');
+            };
+            input.click();
+        });
+        document.getElementById('saveDoc').addEventListener('click', () => {
+            const blob = new Blob([editor.value], {type: 'text/plain'});
+            const a = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = document.querySelector('.window-title').innerText === 'Untitled' ? 'Untitled.txt' : document.querySelector('.window-title').innerText;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        document.getElementById('saveAs').addEventListener('click', () => {
+            const blob = new Blob([editor.value], {type: 'text/plain'});
+            const a = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = prompt('Nama file:', 'dokumen.txt') || 'dokumen.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        document.getElementById('closeWindow').addEventListener('click', () => {
+            alert('Tutup tab browser untuk menutup jendela.');
+        });
+
+        // ========== EDIT MENU ==========
+        document.getElementById('editUndo').addEventListener('click', () => editor.dispatchEvent(new Event('undo', {bubbles: true})));
+        document.getElementById('editRedo').addEventListener('click', () => editor.dispatchEvent(new Event('redo', {bubbles: true})));
+        document.getElementById('editCut').addEventListener('click', () => document.execCommand('cut'));
+        document.getElementById('editCopy').addEventListener('click', () => document.execCommand('copy'));
+        document.getElementById('editPaste').addEventListener('click', async () => {
+            const text = await navigator.clipboard.readText();
+            editor.value += text;
+            updateStats();
+        });
+        document.getElementById('pasteMatchStyle').addEventListener('click', async () => {
+            try {
+                let raw = await navigator.clipboard.readText();
+                raw = sanitizePlain(raw);
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                const current = editor.value;
+                editor.value = current.substring(0, start) + raw + current.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + raw.length;
+                updateStats();
+            } catch(e) { alert('Akses clipboard diperlukan.'); }
+        });
+        document.getElementById('selectAll').addEventListener('click', () => editor.select());
+
+        // ========== FORMAT MENU ==========
+        document.getElementById('makePlainText').addEventListener('click', () => {
+            editor.value = sanitizePlain(editor.value);
+            updateStats();
+            modeBadge.innerText = 'Teks Biasa';
+        });
+        let wrapEnabled = true;
+        document.getElementById('toggleWrapLines').addEventListener('click', () => {
+            wrapEnabled = !wrapEnabled;
+            editor.style.whiteSpace = wrapEnabled ? 'pre-wrap' : 'pre';
+            editor.style.overflowX = wrapEnabled ? 'auto' : 'scroll';
+        });
+        let fontSize = 14;
+        document.getElementById('fontBigger').addEventListener('click', () => {
+            fontSize = Math.min(28, fontSize + 2);
+            editor.style.fontSize = fontSize + 'px';
+        });
+        document.getElementById('fontSmaller').addEventListener('click', () => {
+            fontSize = Math.max(10, fontSize - 2);
+            editor.style.fontSize = fontSize + 'px';
+        });
+
+        // ========== VIEW MENU ==========
+        const statusBarElem = document.getElementById('statusBar');
+        document.getElementById('showStatusBar').addEventListener('click', () => {
+            statusBarElem.style.display = 'flex';
+            statusVisible = true;
+        });
+        document.getElementById('hideStatusBar').addEventListener('click', () => {
+            statusBarElem.style.display = 'none';
+            statusVisible = false;
+        });
+        document.getElementById('actualSize').addEventListener('click', () => {
+            fontSize = 14;
+            editor.style.fontSize = '14px';
+        });
+
+        // ========== WINDOW MENU (simulasi) ==========
+        document.getElementById('minimize').addEventListener('click', () => alert('Minimize (simulasi): perkecil jendela browser manual)'));
+        document.getElementById('zoomWindow').addEventListener('click', () => {
+            if (document.fullscreenEnabled) document.documentElement.requestFullscreen();
+            else alert('Fullscreen tidak didukung');
+        });
+        document.getElementById('bringAllFront').addEventListener('click', () => alert('Jendela sudah di depan.'));
+
+        // ========== HELP & ABOUT ==========
+        document.getElementById('aboutApp').addEventListener('click', () => alert('TextEdit versi macOS Tahoe\nPlain text editor dengan fitur paste bersih.'));
+        document.getElementById('helpSearch').addEventListener('click', () => alert('Gunakan "Paste and Match Style" untuk membersihkan format dari web/PDF.'));
+
+        // ========== OVERRIDE PASTE ==========
+        editor.addEventListener('paste', async (e) => {
+            e.preventDefault();
+            let text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            text = sanitizePlain(text);
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            editor.value = editor.value.substring(0, start) + text + editor.value.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + text.length;
+            updateStats();
+        });
+
+        // ========== CONTEXT MENU ==========
+        const contextDiv = document.createElement('div');
+        contextDiv.className = 'context-menu';
+        contextDiv.style.display = 'none';
+        document.body.appendChild(contextDiv);
+
+        function showContext(x, y) {
+            contextDiv.innerHTML = '';
+            const items = [
+                { label: 'Cut', action: () => document.execCommand('cut') },
+                { label: 'Copy', action: () => document.execCommand('copy') },
+                { label: 'Paste and Match Style', action: async () => {
+                    let txt = await navigator.clipboard.readText();
+                    txt = sanitizePlain(txt);
+                    const start = editor.selectionStart;
+                    const end = editor.selectionEnd;
+                    editor.value = editor.value.substring(0, start) + txt + editor.value.substring(end);
+                    editor.selectionStart = editor.selectionEnd = start + txt.length;
+                    updateStats();
+                } },
+                null,
+                { label: 'Select All', action: () => editor.select() },
+                { label: 'Clear', action: () => { editor.value = ''; updateStats(); } }
+            ];
+            items.forEach(item => {
+                if (item === null) {
+                    const hr = document.createElement('div');
+                    hr.className = 'divider';
+                    contextDiv.appendChild(hr);
+                    return;
+                }
+                const el = document.createElement('div');
+                el.className = 'context-item';
+                el.innerText = item.label;
+                el.onclick = (e) => { e.stopPropagation(); item.action(); contextDiv.style.display = 'none'; };
+                contextDiv.appendChild(el);
+            });
+            contextDiv.style.left = `${x}px`;
+            contextDiv.style.top = `${y}px`;
+            contextDiv.style.display = 'block';
+        }
+
+        editor.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showContext(e.clientX, e.clientY);
+        });
+        window.addEventListener('click', () => { contextDiv.style.display = 'none'; });
+        window.addEventListener('resize', () => { contextDiv.style.display = 'none'; });
+
+        // ========== TOOLBAR FUNGSI ==========
+        document.getElementById('stylePlain').addEventListener('click', () => {
+            editor.style.fontWeight = 'normal';
+            editor.style.fontStyle = 'normal';
+        });
+        document.getElementById('styleBold').addEventListener('click', () => {
+            editor.style.fontWeight = editor.style.fontWeight === 'bold' ? 'normal' : 'bold';
+        });
+        document.getElementById('styleItalic').addEventListener('click', () => {
+            editor.style.fontStyle = editor.style.fontStyle === 'italic' ? 'normal' : 'italic';
+        });
+        document.getElementById('alignLeft').addEventListener('click', () => editor.style.textAlign = 'left');
+        document.getElementById('alignCenter').addEventListener('click', () => editor.style.textAlign = 'center');
+        document.getElementById('alignRight').addEventListener('click', () => editor.style.textAlign = 'right');
+        document.getElementById('listBullet').addEventListener('click', () => {
+            // Sederhana: tambahkan bullet di awal baris
+            const lines = editor.value.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (!lines[i].startsWith('• ')) lines[i] = '• ' + lines[i];
+            }
+            editor.value = lines.join('\n');
+            updateStats();
+        });
+        document.getElementById('listNumber').addEventListener('click', () => {
+            const lines = editor.value.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (!lines[i].match(/^\d+\. /)) lines[i] = (i+1) + '. ' + lines[i];
+            }
+            editor.value = lines.join('\n');
+            updateStats();
+        });
+
+        // Inisialisasi
+        editor.style.fontFamily = "'SF Mono', 'JetBrains Mono', monospace";
+        editor.style.fontSize = '14px';
+        updateStats();
+    </script>
+</body>
+</html>
