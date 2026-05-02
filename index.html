@@ -2,41 +2,66 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>TextEdit — AjarinWeb</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
         body {
             background: #1c1c1e;
-            font-family: -apple-system, 'SF Pro Text', 'Inter', Helvetica, Arial, sans-serif;
-            height: 100vh; width: 100vw;
-            display: flex; flex-direction: column;
+            font-family: -apple-system, 'SF Pro Text', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
+            touch-action: pan-x pan-y; /* better touch scrolling */
         }
+        /* GLOBAL MENU BAR */
         .global-menu-bar {
             background: rgba(30,30,34,0.75);
             backdrop-filter: blur(28px);
             border-bottom: 0.5px solid rgba(255,255,255,0.15);
-            padding: 8px 28px;
+            padding: 8px 16px;
             display: flex;
-            gap: 28px;
-            font-size: 13px;
+            gap: 12px;
+            font-size: clamp(12px, 3vw, 13px);
             font-weight: 500;
             color: #e8e8ef;
             flex-shrink: 0;
+            overflow-x: auto;
+            white-space: nowrap;
             z-index: 100;
+            -webkit-overflow-scrolling: touch;
         }
-        .menu-item { position: relative; padding: 4px 12px; border-radius: 8px; cursor: default; transition: 0.1s; }
+        .global-menu-bar::-webkit-scrollbar {
+            display: none;
+        }
+        .menu-item {
+            position: relative;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: default;
+            transition: 0.1s;
+            flex-shrink: 0;
+        }
         .menu-item:hover { background: rgba(100,110,140,0.5); }
         .dropdown {
-            position: absolute; top: 100%; left: 0;
+            position: absolute;
+            top: 100%;
+            left: 0;
             background: rgba(28,28,32,0.96);
             backdrop-filter: blur(40px);
             border: 0.5px solid rgba(255,255,255,0.2);
             border-radius: 12px;
             padding: 8px 0;
-            min-width: 220px;
-            opacity: 0; visibility: hidden;
+            min-width: 180px;
+            opacity: 0;
+            visibility: hidden;
             transform: translateY(-6px);
             transition: opacity 0.12s ease, transform 0.12s ease;
             pointer-events: none;
@@ -44,12 +69,13 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.4);
         }
         .menu-item:hover .dropdown {
-            opacity: 1; visibility: visible;
+            opacity: 1;
+            visibility: visible;
             transform: translateY(0);
             pointer-events: auto;
         }
         .dropdown-item {
-            padding: 5px 20px;
+            padding: 8px 16px;
             font-size: 13px;
             color: #f0f0f5;
             display: flex;
@@ -61,9 +87,10 @@
         .divider { height: 1px; background: rgba(255,255,255,0.15); margin: 6px 12px; }
         .shortcut-hint { font-size: 11px; color: #9a9aa5; font-family: monospace; }
         
+        /* JENDELA WORKSPACE */
         .window-workspace {
             flex: 1;
-            margin: 24px 32px;
+            margin: 12px 16px 16px;
             background: rgba(28,28,32,0.75);
             backdrop-filter: blur(28px);
             border-radius: 16px;
@@ -79,45 +106,83 @@
             border-bottom: 0.5px solid rgba(255,255,255,0.1);
             flex-shrink: 0;
         }
-        .title-bar { padding: 12px 20px 8px; display: flex; align-items: center; gap: 16px; }
-        .traffic-lights { display: flex; gap: 8px; }
-        .traffic { width: 12px; height: 12px; border-radius: 50%; }
+        .title-bar {
+            padding: 12px 16px 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .traffic-lights {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .traffic {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
         .red { background: #ff5f56; }
         .yellow { background: #ffbd2e; }
         .green { background: #27c93f; }
-        .window-title { font-size: 13px; font-weight: 600; color: #e0e0e8; text-align: center; flex: 1; margin-right: 48px; }
+        .window-title {
+            font-size: clamp(12px, 4vw, 13px);
+            font-weight: 600;
+            color: #e0e0e8;
+            text-align: center;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 48px;
+        }
+        /* TOOLBAR RESPONSIF */
         .toolbar {
-            padding: 6px 16px 8px;
+            padding: 8px 12px;
             display: flex;
-            gap: 16px;
+            gap: 8px;
             align-items: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
             border-top: 0.5px solid rgba(255,255,255,0.05);
         }
         .tool-group {
             display: flex;
             gap: 4px;
             background: rgba(0,0,0,0.3);
-            padding: 4px 8px;
-            border-radius: 28px;
+            padding: 4px 6px;
+            border-radius: 32px;
             border: 0.3px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
         }
         .tool-btn {
             background: transparent;
             border: none;
             color: #dddde6;
-            font-size: 13px;
+            font-size: clamp(11px, 3vw, 13px);
             font-weight: 500;
-            padding: 6px 12px;
-            border-radius: 24px;
-            cursor: default;
+            padding: 8px 12px;
+            border-radius: 28px;
+            cursor: pointer;
             transition: 0.1s;
             font-family: inherit;
+            white-space: nowrap;
+            touch-action: manipulation;
         }
+        .tool-btn:active { background: rgba(100,110,140,0.8); transform: scale(0.96); }
         .tool-btn:hover { background: rgba(100,110,140,0.6); }
         .tool-btn.active { background: #2c6eb0; color: white; }
-        .separator { width: 1px; height: 24px; background: rgba(255,255,255,0.2); margin: 0 6px; }
+        .separator {
+            width: 1px;
+            height: 28px;
+            background: rgba(255,255,255,0.2);
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
         
+        /* WORKSPACE CONTENT */
         .workspace-content {
             flex: 1;
             display: flex;
@@ -130,30 +195,47 @@
             border-bottom: 0.5px solid rgba(255,255,255,0.1);
             display: flex;
             gap: 2px;
-            padding: 6px 12px 0 12px;
+            padding: 6px 8px 0 8px;
             overflow-x: auto;
             flex-shrink: 0;
+            -webkit-overflow-scrolling: touch;
         }
         .tab {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 6px 16px;
+            gap: 6px;
+            padding: 6px 12px;
             background: rgba(45,45,50,0.7);
             border-radius: 10px 10px 0 0;
-            font-size: 12px;
+            font-size: clamp(11px, 3vw, 12px);
             font-weight: 500;
-            cursor: default;
+            cursor: pointer;
             border: 0.5px solid rgba(255,255,255,0.1);
             border-bottom: none;
+            flex-shrink: 0;
         }
         .tab.active { background: rgba(110,120,140,0.9); color: white; }
-        .tab:hover { background: rgba(90,90,100,0.8); }
-        .tab-close { font-size: 14px; cursor: default; opacity: 0.7; padding: 0 2px; }
-        .tab-close:hover { opacity: 1; color: #ff5f56; }
-        .new-tab-btn { background: transparent; border: none; color: #aaa; font-size: 16px; cursor: default; padding: 0 12px; margin-left: 4px; }
-        .new-tab-btn:hover { color: white; }
-
+        .tab:active { background: rgba(90,90,100,0.8); }
+        .tab-close {
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0.7;
+            padding: 0 4px;
+        }
+        .tab-close:active { opacity: 1; color: #ff5f56; }
+        .new-tab-btn {
+            background: transparent;
+            border: none;
+            color: #aaa;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 12px;
+            margin-left: 4px;
+            font-weight: bold;
+        }
+        .new-tab-btn:active { color: white; }
+        
+        /* EDITOR AREA */
         .editor-area {
             flex: 1;
             overflow: hidden;
@@ -164,57 +246,71 @@
             display: flex;
             flex: 1;
             overflow: hidden;
+            flex-direction: row;
+        }
+        /* Responsive: pada layar < 768px, split menjadi vertikal */
+        @media (max-width: 768px) {
+            .split-container {
+                flex-direction: column;
+            }
+            .split-tab-panel {
+                border-right: none !important;
+                border-bottom: 0.5px solid rgba(255,255,255,0.1);
+                min-height: 40%;
+            }
         }
         .split-tab-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border-right: 0.5px solid rgba(255,255,255,0.1);
             position: relative;
+            border-right: 0.5px solid rgba(255,255,255,0.1);
         }
-        .split-tab-panel:last-child { border-right: none; }
         .panel-actions {
             position: absolute;
             top: 8px;
-            right: 12px;
+            right: 8px;
             z-index: 50;
         }
         .panel-tab-picker {
-            width: 28px;
-            height: 28px;
-            background: rgba(60,60,70,0.7);
+            width: 32px;
+            height: 32px;
+            background: rgba(60,60,70,0.85);
             backdrop-filter: blur(8px);
-            border-radius: 20px;
+            border-radius: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: default;
-            font-size: 14px;
+            cursor: pointer;
+            font-size: 18px;
             color: #ddd;
             border: 0.5px solid rgba(255,255,255,0.2);
             transition: 0.1s;
+            touch-action: manipulation;
         }
-        .panel-tab-picker:hover { background: rgba(100,110,140,0.8); }
+        .panel-tab-picker:active { background: rgba(100,110,140,0.9); }
         .panel-tab-menu {
             position: absolute;
-            top: 32px;
+            top: 36px;
             right: 0;
             background: rgba(28,28,32,0.96);
             backdrop-filter: blur(40px);
             border: 0.5px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
+            border-radius: 12px;
             min-width: 140px;
             z-index: 300;
             display: none;
         }
         .panel-tab-menu .menu-item {
-            padding: 6px 16px;
-            font-size: 12px;
+            padding: 10px 16px;
+            font-size: 13px;
             color: #f0f0f5;
-            cursor: default;
+            cursor: pointer;
         }
-        .panel-tab-menu .menu-item:hover { background: #2c6eb0; }
+        .panel-tab-menu .menu-item:active { background: #2c6eb0; }
+        
+        /* RICH EDITOR - FIX LIST MARGIN */
         .rich-editor {
             flex: 1;
             width: 100%;
@@ -222,54 +318,100 @@
             border: none;
             outline: none;
             color: #f0f0f8;
-            font-family: 'SF Mono', 'JetBrains Mono', monospace;
+            font-family: 'SF Mono', 'JetBrains Mono', 'Menlo', monospace;
             font-size: 14px;
-            line-height: 1.55;
-            padding: 18px 24px;
+            line-height: 1.5;
+            padding: 16px 20px;
             overflow: auto;
             cursor: text;
+            word-wrap: break-word;
+        }
+        /* Critical fix: list tidak menabrak margin */
+        .rich-editor ul,
+        .rich-editor ol {
+            margin: 0.5em 0;
+            padding-left: 1.8em;
+            list-style-position: outside;
+        }
+        .rich-editor li {
+            margin: 0.2em 0;
+            line-height: 1.4;
+        }
+        /* Untuk list di dalam contenteditable */
+        .rich-editor ul ul,
+        .rich-editor ol ul,
+        .rich-editor ul ol,
+        .rich-editor ol ol {
+            margin-left: 1.2em;
         }
         .rich-editor:focus { outline: none; }
+        
         .status-bar {
-            padding: 6px 24px;
+            padding: 6px 16px;
             background: rgba(24,24,28,0.6);
             backdrop-filter: blur(12px);
             border-top: 0.5px solid rgba(255,255,255,0.08);
-            font-size: 11px;
+            font-size: 10px;
             color: #9a9aa5;
             display: flex;
             justify-content: space-between;
             flex-shrink: 0;
         }
-        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        /* Scrollbar custom */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: rgba(150,160,180,0.5); border-radius: 10px; }
+        
+        /* Context menu */
         .context-menu {
             position: fixed;
             background: rgba(32,32,36,0.94);
             backdrop-filter: blur(36px);
-            border-radius: 12px;
+            border-radius: 14px;
             border: 0.5px solid rgba(255,255,255,0.2);
             padding: 6px 0;
-            min-width: 180px;
+            min-width: 160px;
             z-index: 10000;
             box-shadow: 0 8px 20px rgba(0,0,0,0.5);
             animation: fadeIn 0.08s ease;
         }
         @keyframes fadeIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
-        .context-item { padding: 6px 18px; font-size:13px; cursor:default; }
-        .context-item:hover { background:#2c6eb0; }
+        .context-item {
+            padding: 10px 18px;
+            color: #f0f0f8;
+            font-size: 14px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .context-item:active { background: #2c6eb0; }
+        
+        /* Responsive tambahan untuk layar sangat kecil */
+        @media (max-width: 480px) {
+            .window-workspace {
+                margin: 8px;
+            }
+            .rich-editor {
+                padding: 12px;
+                font-size: 13px;
+            }
+            .tool-btn {
+                padding: 6px 10px;
+            }
+            .tab {
+                padding: 4px 8px;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="global-menu-bar">
-    <div class="menu-item">🍎 TextEdit<div class="dropdown"><div class="dropdown-item" id="aboutApp">About TextEdit</div><div class="divider"></div><div class="dropdown-item" id="prefs">Preferences...</div><div class="divider"></div><div class="dropdown-item" id="quitApp">Quit TextEdit</div></div></div>
-    <div class="menu-item">File<div class="dropdown"><div class="dropdown-item" id="newDocFile">New <span class="shortcut-hint">⌘N</span></div><div class="dropdown-item" id="openDocFile">Open... <span class="shortcut-hint">⌘O</span></div><div class="dropdown-item" id="saveDocFile">Save <span class="shortcut-hint">⌘S</span></div><div class="dropdown-item" id="saveAsFile">Save As...</div><div class="divider"></div><div class="dropdown-item" id="renameFile">Rename...</div><div class="dropdown-item" id="moveToFile">Move To...</div><div class="divider"></div><div class="dropdown-item" id="closeWindowFile">Close Window <span class="shortcut-hint">⌘W</span></div></div></div>
-    <div class="menu-item">Edit<div class="dropdown"><div class="dropdown-item" id="editUndo">Undo <span class="shortcut-hint">⌘Z</span></div><div class="dropdown-item" id="editRedo">Redo <span class="shortcut-hint">⌘⇧Z</span></div><div class="divider"></div><div class="dropdown-item" id="editCut">Cut <span class="shortcut-hint">⌘X</span></div><div class="dropdown-item" id="editCopy">Copy <span class="shortcut-hint">⌘C</span></div><div class="dropdown-item" id="editPaste">Paste <span class="shortcut-hint">⌘V</span></div><div class="dropdown-item" id="pasteMatchStyle">Paste and Match Style <span class="shortcut-hint">⌘⇧V</span></div><div class="divider"></div><div class="dropdown-item" id="selectAll">Select All <span class="shortcut-hint">⌘A</span></div></div></div>
-    <div class="menu-item">Format<div class="dropdown"><div class="dropdown-item" id="makePlainText">Make Plain Text <span class="shortcut-hint">⌘⇧T</span></div><div class="dropdown-item" id="toggleWrapLines">Wrap Lines <span class="shortcut-hint">⌘⇧W</span></div><div class="divider"></div><div class="dropdown-item" id="fontBigger">Bigger <span class="shortcut-hint">⌘+</span></div><div class="dropdown-item" id="fontSmaller">Smaller <span class="shortcut-hint">⌘-</span></div></div></div>
+    <div class="menu-item">TextEdit<div class="dropdown"><div class="dropdown-item" id="aboutApp">About</div><div class="divider"></div><div class="dropdown-item" id="quitApp">Quit</div></div></div>
+    <div class="menu-item">File<div class="dropdown"><div class="dropdown-item" id="newDocFile">New <span class="shortcut-hint">⌘N</span></div><div class="dropdown-item" id="openDocFile">Open... <span class="shortcut-hint">⌘O</span></div><div class="dropdown-item" id="saveDocFile">Save <span class="shortcut-hint">⌘S</span></div><div class="dropdown-item" id="saveAsFile">Save As...</div><div class="divider"></div><div class="dropdown-item" id="renameFile">Rename...</div><div class="dropdown-item" id="moveToFile">Move To...</div><div class="divider"></div><div class="dropdown-item" id="closeWindowFile">Close</div></div></div>
+    <div class="menu-item">Edit<div class="dropdown"><div class="dropdown-item" id="editUndo">Undo</div><div class="dropdown-item" id="editRedo">Redo</div><div class="divider"></div><div class="dropdown-item" id="editCut">Cut</div><div class="dropdown-item" id="editCopy">Copy</div><div class="dropdown-item" id="editPaste">Paste</div><div class="dropdown-item" id="pasteMatchStyle">Paste & Match Style</div><div class="divider"></div><div class="dropdown-item" id="selectAll">Select All</div></div></div>
+    <div class="menu-item">Format<div class="dropdown"><div class="dropdown-item" id="makePlainText">Make Plain Text</div><div class="dropdown-item" id="toggleWrapLines">Wrap Lines</div><div class="divider"></div><div class="dropdown-item" id="fontBigger">Bigger</div><div class="dropdown-item" id="fontSmaller">Smaller</div></div></div>
     <div class="menu-item" id="viewMenu">View<div class="dropdown" id="viewDropdown"></div></div>
     <div class="menu-item">Window<div class="dropdown"><div class="dropdown-item" id="minimizeWindow">Minimize</div><div class="dropdown-item" id="zoomWindow">Zoom</div></div></div>
-    <div class="menu-item">Help<div class="dropdown"><div class="dropdown-item" id="helpSearch">TextEdit Help</div></div></div>
+    <div class="menu-item">Help<div class="dropdown"><div class="dropdown-item" id="helpSearch">Help</div></div></div>
 </div>
 
 <div class="window-workspace">
@@ -277,26 +419,14 @@
         <div class="title-bar">
             <div class="traffic-lights"><div class="traffic red"></div><div class="traffic yellow"></div><div class="traffic green"></div></div>
             <div class="window-title" id="windowTitle">Untitled</div>
-            <div style="width:48px"></div>
+            <div style="width:44px"></div>
         </div>
         <div class="toolbar" id="toolbar">
-            <div class="tool-group">
-                <button class="tool-btn" data-cmd="removeFormat">Plain</button>
-                <button class="tool-btn" data-cmd="bold">Bold</button>
-                <button class="tool-btn" data-cmd="italic">Italic</button>
-            </div>
+            <div class="tool-group"><button class="tool-btn" data-cmd="removeFormat">Plain</button><button class="tool-btn" data-cmd="bold">Bold</button><button class="tool-btn" data-cmd="italic">Italic</button></div>
             <div class="separator"></div>
-            <div class="tool-group">
-                <button class="tool-btn" data-cmd="justifyLeft">Left</button>
-                <button class="tool-btn" data-cmd="justifyCenter">Center</button>
-                <button class="tool-btn" data-cmd="justifyRight">Right</button>
-                <button class="tool-btn" data-cmd="justifyFull">Justify</button>
-            </div>
+            <div class="tool-group"><button class="tool-btn" data-cmd="justifyLeft">Left</button><button class="tool-btn" data-cmd="justifyCenter">Center</button><button class="tool-btn" data-cmd="justifyRight">Right</button><button class="tool-btn" data-cmd="justifyFull">Justify</button></div>
             <div class="separator"></div>
-            <div class="tool-group">
-                <button class="tool-btn" data-cmd="insertUnorderedList">• List</button>
-                <button class="tool-btn" data-cmd="insertOrderedList">1. List</button>
-            </div>
+            <div class="tool-group"><button class="tool-btn" data-cmd="insertUnorderedList">• List</button><button class="tool-btn" data-cmd="insertOrderedList">1. List</button></div>
         </div>
     </div>
     <div class="workspace-content" id="workspaceContent"></div>
@@ -304,15 +434,15 @@
 </div>
 
 <script>
-    // UTILITIES
+    // ========== UTILITIES ==========
     function sanitizeToPlainText(html) {
         const div = document.createElement('div');
         div.innerHTML = html;
         return div.innerText;
     }
     
-    // DATA MODEL
-    let tabs = [];          // { id, name, contentHTML }
+    // ========== DATA MODEL ==========
+    let tabs = [];
     let nextId = 1;
     let focusedTabId = null;
     let isTabMode = true;
@@ -352,15 +482,15 @@
     function setFocusedTab(tabId) {
         if (focusedTabId === tabId) return;
         focusedTabId = tabId;
-        updateWindowTitleFromFocus();
-        renderWorkspace(); // untuk update highlight tab bar
+        updateWindowTitle();
+        renderWorkspace();
     }
     
     function renameTab(tabId, newName) {
         const tab = tabs.find(t => t.id === tabId);
         if (tab) tab.name = newName;
         renderWorkspace();
-        updateWindowTitleFromFocus();
+        updateWindowTitle();
     }
     
     function updateTabContent(tabId, html) {
@@ -369,7 +499,7 @@
         updateStats();
     }
     
-    function updateWindowTitleFromFocus() {
+    function updateWindowTitle() {
         if (!isTabMode) {
             const doc = tabs[0];
             document.getElementById('windowTitle').innerText = doc ? doc.name : 'TextEdit';
@@ -395,7 +525,7 @@
         document.getElementById('stats').innerText = `${chars} karakter, ${lines} baris`;
     }
     
-    // RENDER
+    // ========== RENDER ==========
     function renderWorkspace() {
         const container = document.getElementById('workspaceContent');
         container.innerHTML = '';
@@ -405,14 +535,10 @@
             tabBar.className = 'tab-bar';
             for (let tab of tabs) {
                 const tabDiv = document.createElement('div');
-                const isActive = (focusedTabId === tab.id);
-                tabDiv.className = `tab ${isActive ? 'active' : ''}`;
+                tabDiv.className = `tab ${(!isSplit && focusedTabId === tab.id) ? 'active' : ''}`;
                 tabDiv.innerHTML = `<span>${tab.name}</span><span class="tab-close" data-id="${tab.id}">✕</span>`;
                 tabDiv.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('tab-close')) {
-                        setFocusedTab(tab.id);
-                        if (!isSplit) renderWorkspace();
-                    }
+                    if (!e.target.classList.contains('tab-close') && !isSplit) setFocusedTab(tab.id);
                 });
                 tabDiv.querySelector('.tab-close').addEventListener('click', (e) => { e.stopPropagation(); closeTab(tab.id); });
                 tabBar.appendChild(tabDiv);
@@ -437,32 +563,21 @@
         } else {
             const splitDiv = document.createElement('div');
             splitDiv.className = 'split-container';
-            // Panel kiri
-            const leftPanel = document.createElement('div');
-            leftPanel.className = 'split-tab-panel';
             const leftTab = tabs.find(t => t.id === leftTabId) || tabs[0];
-            leftPanel.appendChild(createSplitPanel(leftTab, 'left'));
-            splitDiv.appendChild(leftPanel);
-            // Panel kanan
-            const rightPanel = document.createElement('div');
-            rightPanel.className = 'split-tab-panel';
             const rightTab = tabs.find(t => t.id === rightTabId) || (tabs[1] || tabs[0]);
-            rightPanel.appendChild(createSplitPanel(rightTab, 'right'));
-            splitDiv.appendChild(rightPanel);
+            splitDiv.appendChild(createSplitPanel(leftTab, 'left'));
+            splitDiv.appendChild(createSplitPanel(rightTab, 'right'));
             editorArea.appendChild(splitDiv);
         }
         container.appendChild(editorArea);
         updateStats();
-        updateWindowTitleFromFocus();
+        updateWindowTitle();
         updateViewMenu();
     }
     
     function createSplitPanel(tab, side) {
         const containerDiv = document.createElement('div');
-        containerDiv.style.position = 'relative';
-        containerDiv.style.display = 'flex';
-        containerDiv.style.flexDirection = 'column';
-        containerDiv.style.height = '100%';
+        containerDiv.className = 'split-tab-panel';
         
         const actionDiv = document.createElement('div');
         actionDiv.className = 'panel-actions';
@@ -540,7 +655,7 @@
         menu.innerHTML = `
             <div class="context-item" data-action="cut">Cut</div>
             <div class="context-item" data-action="copy">Copy</div>
-            <div class="context-item" data-action="paste">Paste and Match Style</div>
+            <div class="context-item" data-action="paste">Paste & Match Style</div>
             <div class="divider"></div>
             <div class="context-item" data-action="selectAll">Select All</div>
             <div class="context-item" data-action="clear">Clear</div>
@@ -571,7 +686,7 @@
         window.addEventListener('click', () => menu.remove(), { once: true });
     }
     
-    // SPLIT
+    // ========== SPLIT CONTROL ==========
     function enableSplit() {
         if (!isTabMode) return;
         if (tabs.length < 2) addTab('Untitled', '');
@@ -597,7 +712,7 @@
         }
     }
     
-    // MENU VIEW
+    // ========== MENU VIEW ==========
     function updateViewMenu() {
         const viewDropdown = document.getElementById('viewDropdown');
         viewDropdown.innerHTML = '';
@@ -645,7 +760,7 @@
         }
     }
     
-    // RIBBON COMMANDS
+    // ========== RIBBON COMMANDS ==========
     function applyCommandToFocusedEditor(cmd, value = null) {
         let editorDiv = null;
         if (!isTabMode) {
@@ -653,7 +768,6 @@
         } else if (!isSplit) {
             editorDiv = document.querySelector('.rich-editor');
         } else {
-            // cari editor yang sedang fokus
             const focused = document.activeElement;
             if (focused && focused.classList && focused.classList.contains('rich-editor')) {
                 editorDiv = focused;
@@ -672,21 +786,22 @@
         } else if (cmd === 'insertUnorderedList' || cmd === 'insertOrderedList') {
             document.execCommand(cmd, false, null);
         }
-        // Update tab content
         const tabId = focusedTabId;
         if (tabId) {
             const tab = tabs.find(t => t.id === tabId);
             if (tab) tab.contentHTML = editorDiv.innerHTML;
         }
         updateStats();
+        // Refresh toolbar active state (optional)
     }
     
-    // INIT TOOLBAR LISTENERS
     function bindToolbar() {
         const btns = document.querySelectorAll('.tool-btn');
         btns.forEach(btn => {
             btn.removeEventListener('click', toolbarHandler);
             btn.addEventListener('click', toolbarHandler);
+            // juga untuk sentuh
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, { passive: false });
         });
     }
     function toolbarHandler(e) {
@@ -694,8 +809,8 @@
         if (cmd) applyCommandToFocusedEditor(cmd);
     }
     
-    // INIT
-    const initialHTML = '<div>Selamat datang di TextEdit macOS Tahoe.<br>Fitur ribbon aktif: Plain, Bold, Italic, Alignment, List.<br>Context menu juga berfungsi penuh.</div>';
+    // ========== INIT ==========
+    const initialHTML = '<div>Selamat datang di TextEdit macOS Tahoe.<br><br>Fitur ribbon: Plain, Bold, Italic, Alignment, List (bullet & numbering).<br>List sekarang tidak menabrak margin.<br>Responsif untuk semua layar.<br>Context menu lengkap.</div>';
     const initialTab = createTab('Untitled', initialHTML);
     tabs.push(initialTab);
     focusedTabId = initialTab.id;
@@ -705,7 +820,7 @@
     renderWorkspace();
     bindToolbar();
     
-    // MENU HANDLERS
+    // ========== MENU HANDLERS ==========
     document.getElementById('newDocFile').addEventListener('click', () => {
         if (isTabMode) addTab('Untitled', '');
         else {
@@ -821,13 +936,13 @@
         fontSize = Math.max(10, fontSize-2);
         document.querySelectorAll('.rich-editor').forEach(el => el.style.fontSize = fontSize+'px');
     });
-    document.getElementById('aboutApp').addEventListener('click', () => alert('TextEdit macOS Tahoe Style\nRibbon & Context Menu aktif penuh.'));
-    document.getElementById('quitApp').addEventListener('click', () => alert('Tutup tab browser.'));
+    document.getElementById('aboutApp').addEventListener('click', () => alert('TextEdit macOS Tahoe\nResponsif & List fixed'));
+    document.getElementById('quitApp').addEventListener('click', () => alert('Tutup browser tab'));
     document.getElementById('minimizeWindow').addEventListener('click', () => alert('Minimize simulasi'));
     document.getElementById('zoomWindow').addEventListener('click', () => { if (document.fullscreenEnabled) document.documentElement.requestFullscreen(); });
-    document.getElementById('helpSearch').addEventListener('click', () => alert('Gunakan ribbon untuk formatting, context klik kanan lengkap.'));
+    document.getElementById('helpSearch').addEventListener('click', () => alert('Gunakan ribbon & context menu.'));
     
-    // Tambahan: update stats saat ada perubahan dari toolbar
+    // Periodic stats update
     setInterval(() => updateStats(), 500);
 </script>
 </body>
