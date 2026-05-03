@@ -780,11 +780,13 @@
         const existing = document.querySelector('.context-menu');
         if (existing) existing.remove();
         
-        // --- SIMPAN SELEKSI TEKS SAAT INI ---
-        // Sebelum menu konteks merusak fokus, kita simpan area mana yang sedang diblok user
+        // --- SIMPAN SELEKSI TEKS SAAT INI (CLONE) ---
+        // cloneRange() memastikan kita punya "fotokopi" dari teks yang disorot
+        // sehingga tidak akan hilang walaupun editor kehilangan fokus sesaat
         let savedSelection = null;
-        if (window.getSelection && window.getSelection().rangeCount > 0) {
-            savedSelection = window.getSelection().getRangeAt(0);
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            savedSelection = sel.getRangeAt(0).cloneRange();
         }
         
         const menu = document.createElement('div');
@@ -798,62 +800,55 @@
             <div class="context-item" data-action="clear">Clear</div>
         `;
         
-        // Render ke DOM dulu agar ukurannya bisa dihitung
+        // Render ke DOM
         document.body.appendChild(menu);
         
         // CEK BENTURAN LAYAR KANAN & BAWAH
         const menuWidth = menu.offsetWidth;
         const menuHeight = menu.offsetHeight;
-        
         let posX = x;
         let posY = y;
 
-        // Jika menabrak kanan
-        if (posX + menuWidth > window.innerWidth) {
-            posX = window.innerWidth - menuWidth - 8;
-        }
-        // Jika menabrak bawah
-        if (posY + menuHeight > window.innerHeight) {
-            posY = window.innerHeight - menuHeight - 8;
-        }
+        if (posX + menuWidth > window.innerWidth) posX = window.innerWidth - menuWidth - 8;
+        if (posY + menuHeight > window.innerHeight) posY = window.innerHeight - menuHeight - 8;
 
         menu.style.left = posX + 'px';
         menu.style.top = posY + 'px';
         
-        // --- FUNGSI BANTUAN UNTUK MENGEMBALIKAN FOKUS & SELEKSI ---
+        // --- KUNCI UTAMA: MENCEGAH MENU MENCURI FOKUS ---
+        // Ini memastikan kursor tetap berkedip di editor walau menu disentuh/diklik
+        menu.addEventListener('mousedown', (e) => e.preventDefault());
+        menu.addEventListener('touchstart', (e) => e.preventDefault(), {passive: false});
+
+        // Fungsi bantuan untuk menempelkan kembali sorotan teks
         const restoreFocusAndSelection = () => {
             editorDiv.focus();
             if (savedSelection) {
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(savedSelection);
+                const currentSel = window.getSelection();
+                currentSel.removeAllRanges();
+                currentSel.addRange(savedSelection);
             }
         };
 
-        // --- BINDING EVENT KE MASING-MASING TOMBOL ---
-        // Gunakan 'mousedown' alih-alih 'click' (onclick). 
-        // Kenapa? Mousedown terjadi SEBELUM fokus berpindah, sehingga jauh lebih aman.
-        const cutBtn = menu.querySelector('[data-action="cut"]');
-        cutBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault(); // Cegah menu mencuri fokus
+        // --- BINDING EVENT (GUNAKAN CLICK AGAR AMAN DI MOBILE & PC) ---
+        menu.querySelector('[data-action="cut"]').addEventListener('click', () => {
             restoreFocusAndSelection();
             document.execCommand('cut');
+            tab.contentHTML = editorDiv.innerHTML; // Update data setelah teks dipotong
+            updateStats();
             menu.remove();
         });
 
-        const copyBtn = menu.querySelector('[data-action="copy"]');
-        copyBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault();
+        menu.querySelector('[data-action="copy"]').addEventListener('click', () => {
             restoreFocusAndSelection();
             document.execCommand('copy');
             menu.remove();
         });
 
-        const pasteBtn = menu.querySelector('[data-action="paste"]');
-        pasteBtn.addEventListener('mousedown', async (e) => {
-            e.preventDefault();
+        menu.querySelector('[data-action="paste"]').addEventListener('click', async () => {
             restoreFocusAndSelection();
             try {
+                // Gunakan Clipboard API modern
                 const text = await navigator.clipboard.readText();
                 const clean = sanitizeToPlainText(text);
                 document.execCommand('insertText', false, clean);
@@ -861,34 +856,37 @@
                 updateStats();
             } catch (err) {
                 console.error('Gagal paste:', err);
-                alert('Tolong izinkan akses clipboard pada browser.');
+                alert('Peringatan: Browser memblokir akses clipboard. Gunakan pintasan keyboard (Ctrl+V / Cmd+V) atau opsi paste bawaan layar sentuh.');
             }
             menu.remove();
         });
 
-        const selectAllBtn = menu.querySelector('[data-action="selectAll"]');
-        selectAllBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault();
+        menu.querySelector('[data-action="selectAll"]').addEventListener('click', () => {
             restoreFocusAndSelection();
             document.execCommand('selectAll');
             menu.remove();
         });
 
-        const clearBtn = menu.querySelector('[data-action="clear"]');
-        clearBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault();
+        menu.querySelector('[data-action="clear"]').addEventListener('click', () => {
             restoreFocusAndSelection();
-            editorDiv.innerHTML = ''; 
-            tab.contentHTML = ''; 
+            document.execCommand('delete'); // delete lebih rapi untuk history "Undo"
+            tab.contentHTML = editorDiv.innerHTML; 
             updateStats(); 
             menu.remove();
         });
         
-        // Gunakan timeout kecil agar klik kanan itu sendiri tidak langsung memicu penutupan
+        // --- AUTO CLOSE PINTAR ---
+        // Hanya tutup menu jika elemen yang diklik BUKAN bagian dari menu itu sendiri
         setTimeout(() => {
-            window.addEventListener('click', () => menu.remove(), { once: true });
-            // Tambahkan juga untuk event sentuh/pointer agar bisa hilang di mobile
-            window.addEventListener('pointerdown', () => menu.remove(), { once: true });
+            const autoClose = (e) => {
+                if (!menu.contains(e.target)) {
+                    menu.remove();
+                    document.removeEventListener('pointerdown', autoClose);
+                    document.removeEventListener('click', autoClose);
+                }
+            };
+            document.addEventListener('pointerdown', autoClose);
+            document.addEventListener('click', autoClose);
         }, 10);
     }
     
