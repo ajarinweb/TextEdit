@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>TextEdit — AjarinWeb)</title>
+    <title>TextEdit — AjarinWeb</title>
     <style>
         * {
             margin: 0;
@@ -780,6 +780,13 @@
         const existing = document.querySelector('.context-menu');
         if (existing) existing.remove();
         
+        // --- SIMPAN SELEKSI TEKS SAAT INI ---
+        // Sebelum menu konteks merusak fokus, kita simpan area mana yang sedang diblok user
+        let savedSelection = null;
+        if (window.getSelection && window.getSelection().rangeCount > 0) {
+            savedSelection = window.getSelection().getRangeAt(0);
+        }
+        
         const menu = document.createElement('div');
         menu.className = 'context-menu';
         menu.innerHTML = `
@@ -812,28 +819,77 @@
 
         menu.style.left = posX + 'px';
         menu.style.top = posY + 'px';
-        document.body.appendChild(menu);
         
-        const cut = menu.querySelector('[data-action="cut"]');
-        cut.onclick = () => { document.execCommand('cut'); menu.remove(); };
-        const copy = menu.querySelector('[data-action="copy"]');
-        copy.onclick = () => { document.execCommand('copy'); menu.remove(); };
-        const paste = menu.querySelector('[data-action="paste"]');
-        paste.onclick = async () => {
-            let text = await navigator.clipboard.readText();
-            text = sanitizeToPlainText(text);
+        // --- FUNGSI BANTUAN UNTUK MENGEMBALIKAN FOKUS & SELEKSI ---
+        const restoreFocusAndSelection = () => {
             editorDiv.focus();
-            document.execCommand('insertText', false, text);
-            tab.contentHTML = editorDiv.innerHTML;
-            updateStats();
-            menu.remove();
+            if (savedSelection) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(savedSelection);
+            }
         };
-        const selectAll = menu.querySelector('[data-action="selectAll"]');
-        selectAll.onclick = () => { document.execCommand('selectAll'); menu.remove(); };
-        const clear = menu.querySelector('[data-action="clear"]');
-        clear.onclick = () => { editorDiv.innerHTML = ''; tab.contentHTML = ''; updateStats(); menu.remove(); };
+
+        // --- BINDING EVENT KE MASING-MASING TOMBOL ---
+        // Gunakan 'mousedown' alih-alih 'click' (onclick). 
+        // Kenapa? Mousedown terjadi SEBELUM fokus berpindah, sehingga jauh lebih aman.
+        const cutBtn = menu.querySelector('[data-action="cut"]');
+        cutBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Cegah menu mencuri fokus
+            restoreFocusAndSelection();
+            document.execCommand('cut');
+            menu.remove();
+        });
+
+        const copyBtn = menu.querySelector('[data-action="copy"]');
+        copyBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            restoreFocusAndSelection();
+            document.execCommand('copy');
+            menu.remove();
+        });
+
+        const pasteBtn = menu.querySelector('[data-action="paste"]');
+        pasteBtn.addEventListener('mousedown', async (e) => {
+            e.preventDefault();
+            restoreFocusAndSelection();
+            try {
+                const text = await navigator.clipboard.readText();
+                const clean = sanitizeToPlainText(text);
+                document.execCommand('insertText', false, clean);
+                tab.contentHTML = editorDiv.innerHTML;
+                updateStats();
+            } catch (err) {
+                console.error('Gagal paste:', err);
+                alert('Tolong izinkan akses clipboard pada browser.');
+            }
+            menu.remove();
+        });
+
+        const selectAllBtn = menu.querySelector('[data-action="selectAll"]');
+        selectAllBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            restoreFocusAndSelection();
+            document.execCommand('selectAll');
+            menu.remove();
+        });
+
+        const clearBtn = menu.querySelector('[data-action="clear"]');
+        clearBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            restoreFocusAndSelection();
+            editorDiv.innerHTML = ''; 
+            tab.contentHTML = ''; 
+            updateStats(); 
+            menu.remove();
+        });
         
-        window.addEventListener('click', () => menu.remove(), { once: true });
+        // Gunakan timeout kecil agar klik kanan itu sendiri tidak langsung memicu penutupan
+        setTimeout(() => {
+            window.addEventListener('click', () => menu.remove(), { once: true });
+            // Tambahkan juga untuk event sentuh/pointer agar bisa hilang di mobile
+            window.addEventListener('pointerdown', () => menu.remove(), { once: true });
+        }, 10);
     }
     
     // ========== SPLIT CONTROL ==========
