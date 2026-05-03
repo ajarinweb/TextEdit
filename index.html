@@ -781,8 +781,6 @@
         if (existing) existing.remove();
         
         // --- SIMPAN SELEKSI TEKS SAAT INI (CLONE) ---
-        // cloneRange() memastikan kita punya "fotokopi" dari teks yang disorot
-        // sehingga tidak akan hilang walaupun editor kehilangan fokus sesaat
         let savedSelection = null;
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0) {
@@ -814,11 +812,6 @@
 
         menu.style.left = posX + 'px';
         menu.style.top = posY + 'px';
-        
-        // --- KUNCI UTAMA: MENCEGAH MENU MENCURI FOKUS ---
-        // Ini memastikan kursor tetap berkedip di editor walau menu disentuh/diklik
-        menu.addEventListener('mousedown', (e) => e.preventDefault());
-        menu.addEventListener('touchstart', (e) => e.preventDefault(), {passive: false});
 
         // Fungsi bantuan untuk menempelkan kembali sorotan teks
         const restoreFocusAndSelection = () => {
@@ -830,63 +823,50 @@
             }
         };
 
-        // --- BINDING EVENT (GUNAKAN CLICK AGAR AMAN DI MOBILE & PC) ---
-        menu.querySelector('[data-action="cut"]').addEventListener('click', () => {
-            restoreFocusAndSelection();
-            document.execCommand('cut');
-            tab.contentHTML = editorDiv.innerHTML; // Update data setelah teks dipotong
-            updateStats();
-            menu.remove();
-        });
-
-        menu.querySelector('[data-action="copy"]').addEventListener('click', () => {
-            restoreFocusAndSelection();
-            document.execCommand('copy');
-            menu.remove();
-        });
-
-        menu.querySelector('[data-action="paste"]').addEventListener('click', async () => {
-            restoreFocusAndSelection();
-            try {
-                // Gunakan Clipboard API modern
-                const text = await navigator.clipboard.readText();
-                const clean = sanitizeToPlainText(text);
-                document.execCommand('insertText', false, clean);
+        // --- BINDING EVENT (GUNAKAN POINTERDOWN) ---
+        // pointerdown bekerja sempurna untuk Touch, Mouse, dan Stylus.
+        menu.querySelectorAll('.context-item').forEach(item => {
+            item.addEventListener('pointerdown', async (e) => {
+                e.preventDefault(); // Mencegah editor kehilangan fokus
+                e.stopPropagation(); // Mencegah menu tertutup oleh fungsi autoClose di bawah
+                
+                const action = item.getAttribute('data-action');
+                restoreFocusAndSelection();
+                
+                if (action === 'cut') {
+                    document.execCommand('cut');
+                } else if (action === 'copy') {
+                    document.execCommand('copy');
+                } else if (action === 'paste') {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        const clean = sanitizeToPlainText(text);
+                        document.execCommand('insertText', false, clean);
+                    } catch (err) {
+                        console.error('Gagal paste:', err);
+                        alert('Akses clipboard diblokir. Gunakan paste bawaan sistem operasi Anda.');
+                    }
+                } else if (action === 'selectAll') {
+                    document.execCommand('selectAll');
+                } else if (action === 'clear') {
+                    document.execCommand('delete');
+                }
+                
                 tab.contentHTML = editorDiv.innerHTML;
                 updateStats();
-            } catch (err) {
-                console.error('Gagal paste:', err);
-                alert('Peringatan: Browser memblokir akses clipboard. Gunakan pintasan keyboard (Ctrl+V / Cmd+V) atau opsi paste bawaan layar sentuh.');
-            }
-            menu.remove();
-        });
-
-        menu.querySelector('[data-action="selectAll"]').addEventListener('click', () => {
-            restoreFocusAndSelection();
-            document.execCommand('selectAll');
-            menu.remove();
-        });
-
-        menu.querySelector('[data-action="clear"]').addEventListener('click', () => {
-            restoreFocusAndSelection();
-            document.execCommand('delete'); // delete lebih rapi untuk history "Undo"
-            tab.contentHTML = editorDiv.innerHTML; 
-            updateStats(); 
-            menu.remove();
+                menu.remove();
+            });
         });
         
         // --- AUTO CLOSE PINTAR ---
-        // Hanya tutup menu jika elemen yang diklik BUKAN bagian dari menu itu sendiri
         setTimeout(() => {
             const autoClose = (e) => {
                 if (!menu.contains(e.target)) {
                     menu.remove();
                     document.removeEventListener('pointerdown', autoClose);
-                    document.removeEventListener('click', autoClose);
                 }
             };
             document.addEventListener('pointerdown', autoClose);
-            document.addEventListener('click', autoClose);
         }, 10);
     }
     
