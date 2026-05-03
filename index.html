@@ -331,6 +331,11 @@
             cursor: text;
             word-wrap: break-word;
         }
+		.rich-editor pre {
+            white-space: inherit;
+            font-family: inherit;
+            margin: 0;
+        }
         /* Critical fix: list tidak menabrak margin */
         .rich-editor ul,
         .rich-editor ol {
@@ -541,7 +546,7 @@
 </div>
 
 <script>
-    // ========== UTILITIES ==========
+// ========== UTILITIES ==========
     function sanitizeToPlainText(html) {
         const div = document.createElement('div');
         div.innerHTML = html;
@@ -557,6 +562,7 @@
     let leftTabId = null;
     let rightTabId = null;
     let statusBarVisible = true;
+    let isWrapLines = true; // Variabel dipindah ke atas agar dapat diakses global
     
     function createTab(name, contentHTML) {
         return { id: nextId++, name: name || 'Untitled', contentHTML: contentHTML || '' };
@@ -590,7 +596,17 @@
         if (focusedTabId === tabId) return;
         focusedTabId = tabId;
         updateWindowTitle();
-        renderWorkspace();
+        
+        // PERBAIKAN: Hanya update visual warna tab. JANGAN panggil renderWorkspace()
+        // agar editor tidak hancur dan kursor tidak hilang saat di-klik.
+        document.querySelectorAll('.tab').forEach(tabEl => {
+            const closeBtn = tabEl.querySelector('.tab-close');
+            if (closeBtn && parseInt(closeBtn.getAttribute('data-id')) === tabId) {
+                tabEl.classList.add('active');
+            } else {
+                tabEl.classList.remove('active');
+            }
+        });
     }
     
     function renameTab(tabId, newName) {
@@ -627,23 +643,17 @@
             if (tab) activeHTML = tab.contentHTML;
         }
         
-        // Update hitungan Karakter & Baris
         const text = sanitizeToPlainText(activeHTML);
         const chars = text.length;
         const lines = text.split(/\r?\n/).length;
         document.getElementById('stats').innerText = `${chars} karakter, ${lines} baris`;
 
-        // === LOGIKA BARU: UPDATE BADGE DINAMIS ===
         const modeBadge = document.getElementById('modeBadge');
         if (modeBadge) {
-            // Cek apakah dokumen ini dibuat menjadi Plain Text secara manual (tag <pre>)
             const hasPre = /<pre[^>]*>/i.test(activeHTML);
-            
-            // Bersihkan tag netral (div, br) lalu cek apakah ada elemen Rich Text
             const testHtml = activeHTML.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
             const hasRichFormat = /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml);
 
-            // Tentukan teks di status bar
             if (hasPre) {
                 modeBadge.innerText = 'Plain Text';
             } else if (hasRichFormat) {
@@ -664,10 +674,18 @@
             tabBar.className = 'tab-bar';
             for (let tab of tabs) {
                 const tabDiv = document.createElement('div');
-                tabDiv.className = `tab ${(!isSplit && focusedTabId === tab.id) ? 'active' : ''}`;
+                // PERBAIKAN: Selalu nyalakan class active tanpa peduli isSplit
+                tabDiv.className = `tab ${focusedTabId === tab.id ? 'active' : ''}`;
                 tabDiv.innerHTML = `<span>${tab.name}</span><span class="tab-close" data-id="${tab.id}">✕</span>`;
                 tabDiv.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('tab-close') && !isSplit) setFocusedTab(tab.id);
+                    if (!e.target.classList.contains('tab-close')) {
+                        if (!isSplit) {
+                            setFocusedTab(tab.id);
+                            renderWorkspace(); // Harus dirender jika mode layar tunggal untuk ganti halaman
+                        } else {
+                            setFocusedTab(tab.id); // Jika split, cukup ganti status fokusnya saja
+                        }
+                    }
                 });
                 tabDiv.querySelector('.tab-close').addEventListener('click', (e) => { e.stopPropagation(); closeTab(tab.id); });
                 tabBar.appendChild(tabDiv);
@@ -753,13 +771,17 @@
         const editorDiv = document.createElement('div');
         editorDiv.className = 'rich-editor';
         editorDiv.contentEditable = 'true';
+        
+        // PERBAIKAN: Terapkan status Wrap Lines bawaan saat editor baru diciptakan
+        editorDiv.style.whiteSpace = isWrapLines ? 'pre-wrap' : 'pre';
+        
         editorDiv.innerHTML = tab.contentHTML || '';
         editorDiv.addEventListener('input', () => {
             tab.contentHTML = editorDiv.innerHTML;
             updateStats();
         });
         editorDiv.addEventListener('focus', () => {
-            setFocusedTab(tab.id);
+            setFocusedTab(tab.id); // Sekarang aman, tidak akan menghancurkan kursor
         });
         editorDiv.addEventListener('paste', (e) => {
             e.preventDefault();
@@ -780,7 +802,6 @@
         const existing = document.querySelector('.context-menu');
         if (existing) existing.remove();
         
-        // --- SIMPAN SELEKSI TEKS SAAT INI (CLONE) ---
         let savedSelection = null;
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0) {
@@ -798,10 +819,8 @@
             <div class="context-item" data-action="clear">Clear</div>
         `;
         
-        // Render ke DOM
         document.body.appendChild(menu);
         
-        // CEK BENTURAN LAYAR KANAN & BAWAH
         const menuWidth = menu.offsetWidth;
         const menuHeight = menu.offsetHeight;
         let posX = x;
@@ -813,7 +832,6 @@
         menu.style.left = posX + 'px';
         menu.style.top = posY + 'px';
 
-        // Fungsi bantuan untuk menempelkan kembali sorotan teks
         const restoreFocusAndSelection = () => {
             editorDiv.focus();
             if (savedSelection) {
@@ -823,12 +841,10 @@
             }
         };
 
-        // --- BINDING EVENT (GUNAKAN POINTERDOWN) ---
-        // pointerdown bekerja sempurna untuk Touch, Mouse, dan Stylus.
         menu.querySelectorAll('.context-item').forEach(item => {
             item.addEventListener('pointerdown', async (e) => {
-                e.preventDefault(); // Mencegah editor kehilangan fokus
-                e.stopPropagation(); // Mencegah menu tertutup oleh fungsi autoClose di bawah
+                e.preventDefault(); 
+                e.stopPropagation(); 
                 
                 const action = item.getAttribute('data-action');
                 restoreFocusAndSelection();
@@ -858,7 +874,6 @@
             });
         });
         
-        // --- AUTO CLOSE PINTAR ---
         setTimeout(() => {
             const autoClose = (e) => {
                 if (!menu.contains(e.target)) {
@@ -977,7 +992,6 @@
             if (tab) tab.contentHTML = editorDiv.innerHTML;
         }
         updateStats();
-        // Refresh toolbar active state (optional)
     }
     
     function bindToolbar() {
@@ -985,7 +999,6 @@
         btns.forEach(btn => {
             btn.removeEventListener('click', toolbarHandler);
             btn.addEventListener('click', toolbarHandler);
-            // juga untuk sentuh
             btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, { passive: false });
         });
     }
@@ -1039,28 +1052,23 @@
         input.click();
     });
     
-	// ========== LOGIKA MODAL SAVE & AUTO-DETECT FORMAT ==========
+    // ========== LOGIKA MODAL SAVE & AUTO-DETECT FORMAT ==========
     const saveModal = document.getElementById('saveModal');
     const saveFilenameInput = document.getElementById('saveFilenameInput');
     const saveFormatSelect = document.getElementById('saveFormatSelect');
     let currentSaveTab = null;
 
-    // Fungsi cerdas untuk deteksi: Plain Text vs Rich Text
     function detectDocumentFormat(html) {
-        // Hilangkan tag netral seperti div atau br
         const testHtml = html.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
-        // Cek apakah teks memiliki tag format (bold, italic, list, dll)
         const hasRichText = /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml);
         return hasRichText ? '.rtf' : '.txt';
     }
 
-    // Buka Modal
     function openSaveModal(tab, isSaveAs) {
         currentSaveTab = tab;
         let baseName = tab.name;
         let currentExt = '';
         
-        // Cek apakah file sudah punya ekstensi di namanya
         const lastDot = baseName.lastIndexOf('.');
         if (lastDot > 0) {
             currentExt = baseName.substring(lastDot);
@@ -1070,17 +1078,15 @@
         saveFilenameInput.value = baseName;
 
         if (!isSaveAs && currentExt) {
-            // Jika klik Save biasa dan sudah pernah disimpan, gunakan format sebelumnya
             saveFormatSelect.value = currentExt;
         } else {
-            // AUTO DETECT FORMAT: Jika ada style pilih .rtf, jika bersih pilih .txt
             saveFormatSelect.value = detectDocumentFormat(tab.contentHTML);
         }
 
         saveModal.style.display = 'flex';
-        closeAllDropdowns(); // Menutup dropdown menu file
+        closeAllDropdowns();
         saveFilenameInput.focus();
-        saveFilenameInput.select(); // Block nama file agar langsung bisa diketik ulang
+        saveFilenameInput.select();
     }
 
     document.getElementById('saveDocFile').addEventListener('click', () => {
@@ -1093,32 +1099,26 @@
         if (tab) openSaveModal(tab, true);
     });
 
-    // Tombol Cancel di Modal
     document.getElementById('cancelSaveBtn').addEventListener('click', () => {
         saveModal.style.display = 'none';
     });
 
-    // Tombol Save di Modal
     document.getElementById('confirmSaveBtn').addEventListener('click', () => {
         let baseName = saveFilenameInput.value.trim() || 'Untitled';
         let ext = saveFormatSelect.value;
         
         const finalName = baseName + ext;
-        currentSaveTab.name = finalName; // Update nama di Tab
+        currentSaveTab.name = finalName;
         
         let contentToSave = currentSaveTab.contentHTML;
         
-        // Bersihkan HTML jika di-save sebagai Plain Text atau Markdown
         if (ext === '.txt' || ext === '.md') {
             contentToSave = sanitizeToPlainText(contentToSave);
-        } 
-        // Jika RTF, kita berikan wrapper standar agar bisa terbaca sistem OS
-        else if (ext === '.rtf') {
+        } else if (ext === '.rtf') {
             const plain = sanitizeToPlainText(contentToSave);
             contentToSave = `{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset0 -apple-system;}}\n{\\*\\generator TextEdit Web;}\\pard\\sa200\\sl276\\slmult1\\f0\\fs22\\lang9 ${plain.replace(/\n/g, '\\par\n')}}`;
         }
 
-        // Proses Unduh File
         const blob = new Blob([contentToSave], {type: 'text/plain'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -1127,9 +1127,9 @@
         URL.revokeObjectURL(a.href);
         
         saveModal.style.display = 'none';
-        renderWorkspace(); // Refresh nama tab di layar
+        renderWorkspace();
     });
-	
+    
     document.getElementById('renameFile').addEventListener('click', () => {
         let tab = null;
         if (!isTabMode) tab = tabs[0];
@@ -1157,6 +1157,7 @@
         document.execCommand('insertText', false, clean);
     });
     document.getElementById('selectAll').addEventListener('click', () => document.execCommand('selectAll'));
+    
     document.getElementById('makePlainText').addEventListener('click', () => {
         let tab = null;
         if (!isTabMode) tab = tabs[0];
@@ -1168,11 +1169,15 @@
             renderWorkspace();
         }
     });
-    let wrap = true;
+    
+    // PERBAIKAN: Gunakan variabel isWrapLines secara global
     document.getElementById('toggleWrapLines').addEventListener('click', () => {
-        wrap = !wrap;
-        document.querySelectorAll('.rich-editor').forEach(el => el.style.whiteSpace = wrap ? 'pre-wrap' : 'pre');
+        isWrapLines = !isWrapLines;
+        document.querySelectorAll('.rich-editor').forEach(el => {
+            el.style.whiteSpace = isWrapLines ? 'pre-wrap' : 'pre';
+        });
     });
+    
     let fontSize = 14;
     document.getElementById('fontBigger').addEventListener('click', () => {
         fontSize = Math.min(28, fontSize+2);
@@ -1188,23 +1193,8 @@
     document.getElementById('zoomWindow').addEventListener('click', () => { if (document.fullscreenEnabled) document.documentElement.requestFullscreen(); });
     document.getElementById('helpSearch').addEventListener('click', () => alert('Gunakan ribbon & context menu.'));
     
-    // Periodic stats update
     setInterval(() => updateStats(), 500);
 
-    // ========== MOUSE SCROLL HORIZONTAL (DESKTOP) ==========
-    function enableMouseScroll(element) {
-        if (!element) return;
-        element.addEventListener('wheel', (e) => {
-            if (e.deltaY !== 0) {
-                e.preventDefault();
-                element.scrollLeft += e.deltaY;
-            }
-        });
-    }
-    enableMouseScroll(document.querySelector('.global-menu-bar'));
-    enableMouseScroll(document.querySelector('.toolbar'));
-    enableMouseScroll(document.querySelector('.tab-bar'));
-    
     // ========== MOUSE SCROLL HORIZONTAL (DESKTOP) ==========
     function enableMouseScroll(element) {
         if (!element) return;
@@ -1223,7 +1213,6 @@
     const menuItems = document.querySelectorAll('.global-menu-bar .menu-item');
     const globalMenuBar = document.querySelector('.global-menu-bar');
 
-    // Pindahkan dropdown ke body agar terbebas dari overflow & backdrop-filter
     const dropdownMap = new Map();
     menuItems.forEach(item => {
         const dropdown = item.querySelector('.dropdown');
@@ -1244,32 +1233,25 @@
         const dropdown = dropdownMap.get(item);
         if (!dropdown) return;
 
-        // BUKA/TUTUP HANYA DENGAN KLIK (Berlaku untuk Mouse & Touch)
         item.addEventListener('click', (e) => {
-            e.stopPropagation(); // Mencegah klik memicu event di document
+            e.stopPropagation(); 
             
             const isShowing = dropdown.classList.contains('show');
 
             if (isShowing) {
-                // Jika menu ini sudah terbuka, klik lagi untuk menutupnya
                 closeAllDropdowns();
             } else {
-                // Jika belum, tutup semua menu lain lalu buka yang ini
                 closeAllDropdowns(); 
                 dropdown.classList.add('show');
                 
-                // Hitung posisi secara dinamis
                 const rect = item.getBoundingClientRect();
                 dropdown.style.position = 'fixed';
                 dropdown.style.top = `${rect.bottom + 4}px`;
                 
-                // CEK BENTURAN LAYAR KANAN
                 let leftPos = rect.left;
                 const dropdownWidth = dropdown.offsetWidth;
                 
-                // Jika posisi kiri + lebar dropdown melebihi layar, geser ke kiri
                 if (leftPos + dropdownWidth > window.innerWidth) {
-                    // Margin aman 8px dari ujung kanan layar
                     leftPos = window.innerWidth - dropdownWidth - 8; 
                 }
                 
@@ -1278,12 +1260,10 @@
         });
     });
 
-    // Tutup menu saat pengguna meng-klik area luar (atau saat mengklik salah satu menu di dalam dropdown)
     document.addEventListener('click', () => {
         closeAllDropdowns();
     });
 
-    // Tutup menu jika menu bar di-scroll
     globalMenuBar.addEventListener('scroll', closeAllDropdowns, { passive: true });
 </script>
 </body>
