@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>TextEdit — AjarinWeb</title>
+    <title>TextEdit — AjarinWeb)</title>
     <style>
         * {
             margin: 0;
@@ -14,7 +14,7 @@
         body {
             background: #1c1c1e;
             font-family: -apple-system, 'SF Pro Text', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            height: 100vh;
+            height: 100dvh;
             width: 100vw;
             display: flex;
             flex-direction: column;
@@ -33,12 +33,14 @@
             font-weight: 500;
             color: #e8e8ef;
             flex-shrink: 0;
-            overflow-x: auto;
+            flex-wrap: nowrap; /* Memaksa tetap dalam 1 baris */
             white-space: nowrap;
-            z-index: 100;
+            overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            z-index: 100;
         }
-        .global-menu-bar::-webkit-scrollbar {
+        .global-menu-bar::-webkit-scrollbar, .toolbar::-webkit-scrollbar, .tab-bar::-webkit-scrollbar {
             display: none;
         }
         .menu-item {
@@ -68,7 +70,7 @@
             z-index: 200;
             box-shadow: 0 10px 25px rgba(0,0,0,0.4);
         }
-        .menu-item:hover .dropdown {
+        .dropdown.show {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
@@ -90,6 +92,7 @@
         /* JENDELA WORKSPACE */
         .window-workspace {
             flex: 1;
+            min-height: 0;
             margin: 12px 16px 16px;
             background: rgba(28,28,32,0.75);
             backdrop-filter: blur(28px);
@@ -144,8 +147,9 @@
             align-items: center;
             flex-wrap: nowrap;
             overflow-x: auto;
+            white-space: nowrap;
             -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
+            scrollbar-width: none;
             border-top: 0.5px solid rgba(255,255,255,0.05);
         }
         .tool-group {
@@ -199,6 +203,7 @@
             overflow-x: auto;
             flex-shrink: 0;
             -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
         }
         .tab {
             display: inline-flex;
@@ -248,7 +253,7 @@
             overflow: hidden;
             flex-direction: row;
         }
-        /* Responsive: pada layar < 768px, split menjadi vertikal */
+        
         @media (max-width: 768px) {
             .split-container {
                 flex-direction: column;
@@ -378,11 +383,12 @@
         @keyframes fadeIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
         .context-item {
             padding: 10px 18px;
-            color: #f0f0f8;
             font-size: 14px;
+			color: #f0f0f5;
             cursor: pointer;
             touch-action: manipulation;
         }
+		.context-item:hover { background: #2c6eb0; }
         .context-item:active { background: #2c6eb0; }
         
         /* Responsive tambahan untuk layar sangat kecil */
@@ -401,6 +407,83 @@
                 padding: 4px 8px;
             }
         }
+		
+		/* --- MODAL SAVE macOS --- */
+		.mac-modal-overlay {
+			position: fixed;
+			top: 0; left: 0; right: 0; bottom: 0;
+			background: rgba(0, 0, 0, 0.4);
+			display: none;
+			justify-content: center;
+			align-items: flex-start;
+			padding-top: 15vh;
+			z-index: 20000;
+			animation: fadeIn 0.15s ease;
+		}
+		.mac-modal {
+			background: rgba(30, 30, 34, 0.85);
+			backdrop-filter: blur(40px);
+			-webkit-backdrop-filter: blur(40px);
+			border: 0.5px solid rgba(255,255,255,0.2);
+			border-radius: 12px;
+			width: 360px;
+			max-width: 90vw;
+			padding: 20px;
+			box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+			color: #e8e8ef;
+			font-size: 13px;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+		}
+		.mac-modal-row {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+		.mac-modal-row label {
+			width: 65px;
+			text-align: right;
+			color: #ddd;
+		}
+		.mac-modal-row input, .mac-modal-row select {
+			flex: 1;
+			background: rgba(0, 0, 0, 0.3);
+			border: 1px solid rgba(255,255,255,0.15);
+			color: #fff;
+			padding: 6px 10px;
+			border-radius: 6px;
+			font-family: inherit;
+			font-size: 13px;
+			outline: none;
+			transition: 0.2s;
+		}
+		.mac-modal-row input:focus, .mac-modal-row select:focus {
+			border-color: #007aff;
+			box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+		}
+		.mac-modal-actions {
+			display: flex;
+			justify-content: flex-end;
+			gap: 10px;
+			margin-top: 8px;
+		}
+		.mac-modal-actions button {
+			background: rgba(255, 255, 255, 0.1);
+			border: 0.5px solid rgba(255,255,255,0.1);
+			color: white;
+			padding: 6px 16px;
+			border-radius: 6px;
+			font-size: 13px;
+			cursor: pointer;
+			font-family: inherit;
+		}
+		.mac-modal-actions button.primary {
+			background: #007aff;
+			border-color: #007aff;
+			font-weight: 500;
+		}
+		.mac-modal-actions button:active { opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -431,6 +514,30 @@
     </div>
     <div class="workspace-content" id="workspaceContent"></div>
     <div class="status-bar" id="statusBar"><span id="stats">0 karakter, 0 baris</span><span id="modeBadge">Rich Text</span></div>
+</div>
+
+<!-- MODAL SAVE FILE macOS -->
+<div class="mac-modal-overlay" id="saveModal">
+    <div class="mac-modal">
+        <div class="mac-modal-row">
+            <label>Save As:</label>
+            <input type="text" id="saveFilenameInput" value="Untitled" autocomplete="off">
+        </div>
+        <div class="mac-modal-row">
+            <label>Format:</label>
+            <select id="saveFormatSelect">
+                <option value=".txt">Plain Text (.txt)</option>
+                <option value=".rtf">Rich Text Document (.rtf)</option>
+                <option value=".md">Markdown (.md)</option>
+                <option value=".html">Web Page (.html)</option>
+                <option value="">All Files (*.*)</option>
+            </select>
+        </div>
+        <div class="mac-modal-actions">
+            <button id="cancelSaveBtn">Cancel</button>
+            <button id="confirmSaveBtn" class="primary">Save</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -519,10 +626,32 @@
             const tab = tabs.find(t => t.id === focusedTabId);
             if (tab) activeHTML = tab.contentHTML;
         }
+        
+        // Update hitungan Karakter & Baris
         const text = sanitizeToPlainText(activeHTML);
         const chars = text.length;
         const lines = text.split(/\r?\n/).length;
         document.getElementById('stats').innerText = `${chars} karakter, ${lines} baris`;
+
+        // === LOGIKA BARU: UPDATE BADGE DINAMIS ===
+        const modeBadge = document.getElementById('modeBadge');
+        if (modeBadge) {
+            // Cek apakah dokumen ini dibuat menjadi Plain Text secara manual (tag <pre>)
+            const hasPre = /<pre[^>]*>/i.test(activeHTML);
+            
+            // Bersihkan tag netral (div, br) lalu cek apakah ada elemen Rich Text
+            const testHtml = activeHTML.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
+            const hasRichFormat = /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml);
+
+            // Tentukan teks di status bar
+            if (hasPre) {
+                modeBadge.innerText = 'Plain Text';
+            } else if (hasRichFormat) {
+                modeBadge.innerText = 'Rich Text';
+            } else {
+                modeBadge.innerText = 'Plain Text'; 
+            }
+        }
     }
     
     // ========== RENDER ==========
@@ -650,6 +779,7 @@
     function showContextMenu(x, y, editorDiv, tab) {
         const existing = document.querySelector('.context-menu');
         if (existing) existing.remove();
+        
         const menu = document.createElement('div');
         menu.className = 'context-menu';
         menu.innerHTML = `
@@ -660,8 +790,28 @@
             <div class="context-item" data-action="selectAll">Select All</div>
             <div class="context-item" data-action="clear">Clear</div>
         `;
-        menu.style.left = x + 'px';
-        menu.style.top = y + 'px';
+        
+        // Render ke DOM dulu agar ukurannya bisa dihitung
+        document.body.appendChild(menu);
+        
+        // CEK BENTURAN LAYAR KANAN & BAWAH
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        
+        let posX = x;
+        let posY = y;
+
+        // Jika menabrak kanan
+        if (posX + menuWidth > window.innerWidth) {
+            posX = window.innerWidth - menuWidth - 8;
+        }
+        // Jika menabrak bawah
+        if (posY + menuHeight > window.innerHeight) {
+            posY = window.innerHeight - menuHeight - 8;
+        }
+
+        menu.style.left = posX + 'px';
+        menu.style.top = posY + 'px';
         document.body.appendChild(menu);
         
         const cut = menu.querySelector('[data-action="cut"]');
@@ -715,6 +865,7 @@
     // ========== MENU VIEW ==========
     function updateViewMenu() {
         const viewDropdown = document.getElementById('viewDropdown');
+        if (!viewDropdown) return;
         viewDropdown.innerHTML = '';
         const statusItem = document.createElement('div');
         statusItem.className = 'dropdown-item';
@@ -810,7 +961,7 @@
     }
     
     // ========== INIT ==========
-    const initialHTML = '<div>Selamat datang di TextEdit macOS Tahoe.<br><br>Fitur ribbon: Plain, Bold, Italic, Alignment, List (bullet & numbering).<br>List sekarang tidak menabrak margin.<br>Responsif untuk semua layar.<br>Context menu lengkap.</div>';
+    const initialHTML = '';
     const initialTab = createTab('Untitled', initialHTML);
     tabs.push(initialTab);
     focusedTabId = initialTab.id;
@@ -853,37 +1004,98 @@
         };
         input.click();
     });
+    
+	// ========== LOGIKA MODAL SAVE & AUTO-DETECT FORMAT ==========
+    const saveModal = document.getElementById('saveModal');
+    const saveFilenameInput = document.getElementById('saveFilenameInput');
+    const saveFormatSelect = document.getElementById('saveFormatSelect');
+    let currentSaveTab = null;
+
+    // Fungsi cerdas untuk deteksi: Plain Text vs Rich Text
+    function detectDocumentFormat(html) {
+        // Hilangkan tag netral seperti div atau br
+        const testHtml = html.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
+        // Cek apakah teks memiliki tag format (bold, italic, list, dll)
+        const hasRichText = /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml);
+        return hasRichText ? '.rtf' : '.txt';
+    }
+
+    // Buka Modal
+    function openSaveModal(tab, isSaveAs) {
+        currentSaveTab = tab;
+        let baseName = tab.name;
+        let currentExt = '';
+        
+        // Cek apakah file sudah punya ekstensi di namanya
+        const lastDot = baseName.lastIndexOf('.');
+        if (lastDot > 0) {
+            currentExt = baseName.substring(lastDot);
+            baseName = baseName.substring(0, lastDot);
+        }
+
+        saveFilenameInput.value = baseName;
+
+        if (!isSaveAs && currentExt) {
+            // Jika klik Save biasa dan sudah pernah disimpan, gunakan format sebelumnya
+            saveFormatSelect.value = currentExt;
+        } else {
+            // AUTO DETECT FORMAT: Jika ada style pilih .rtf, jika bersih pilih .txt
+            saveFormatSelect.value = detectDocumentFormat(tab.contentHTML);
+        }
+
+        saveModal.style.display = 'flex';
+        closeAllDropdowns(); // Menutup dropdown menu file
+        saveFilenameInput.focus();
+        saveFilenameInput.select(); // Block nama file agar langsung bisa diketik ulang
+    }
+
     document.getElementById('saveDocFile').addEventListener('click', () => {
-        let tab = null;
-        if (!isTabMode) tab = tabs[0];
-        else if (!isSplit) tab = tabs.find(t => t.id === focusedTabId);
-        else tab = tabs.find(t => t.id === leftTabId);
-        if (tab) {
-            const blob = new Blob([tab.contentHTML], {type: 'text/html'});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = tab.name.endsWith('.html') ? tab.name : tab.name + '.html';
-            a.click();
-            URL.revokeObjectURL(a.href);
-        }
+        let tab = !isTabMode ? tabs[0] : (!isSplit ? tabs.find(t => t.id === focusedTabId) : tabs.find(t => t.id === leftTabId));
+        if (tab) openSaveModal(tab, false);
     });
+
     document.getElementById('saveAsFile').addEventListener('click', () => {
-        let tab = null;
-        if (!isTabMode) tab = tabs[0];
-        else if (!isSplit) tab = tabs.find(t => t.id === focusedTabId);
-        else tab = tabs.find(t => t.id === leftTabId);
-        if (tab) {
-            const name = prompt('Save as:', tab.name);
-            if (name) {
-                const blob = new Blob([tab.contentHTML], {type: 'text/html'});
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = name.endsWith('.html') ? name : name + '.html';
-                a.click();
-                URL.revokeObjectURL(a.href);
-            }
-        }
+        let tab = !isTabMode ? tabs[0] : (!isSplit ? tabs.find(t => t.id === focusedTabId) : tabs.find(t => t.id === leftTabId));
+        if (tab) openSaveModal(tab, true);
     });
+
+    // Tombol Cancel di Modal
+    document.getElementById('cancelSaveBtn').addEventListener('click', () => {
+        saveModal.style.display = 'none';
+    });
+
+    // Tombol Save di Modal
+    document.getElementById('confirmSaveBtn').addEventListener('click', () => {
+        let baseName = saveFilenameInput.value.trim() || 'Untitled';
+        let ext = saveFormatSelect.value;
+        
+        const finalName = baseName + ext;
+        currentSaveTab.name = finalName; // Update nama di Tab
+        
+        let contentToSave = currentSaveTab.contentHTML;
+        
+        // Bersihkan HTML jika di-save sebagai Plain Text atau Markdown
+        if (ext === '.txt' || ext === '.md') {
+            contentToSave = sanitizeToPlainText(contentToSave);
+        } 
+        // Jika RTF, kita berikan wrapper standar agar bisa terbaca sistem OS
+        else if (ext === '.rtf') {
+            const plain = sanitizeToPlainText(contentToSave);
+            contentToSave = `{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset0 -apple-system;}}\n{\\*\\generator TextEdit Web;}\\pard\\sa200\\sl276\\slmult1\\f0\\fs22\\lang9 ${plain.replace(/\n/g, '\\par\n')}}`;
+        }
+
+        // Proses Unduh File
+        const blob = new Blob([contentToSave], {type: 'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = finalName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        
+        saveModal.style.display = 'none';
+        renderWorkspace(); // Refresh nama tab di layar
+    });
+	
     document.getElementById('renameFile').addEventListener('click', () => {
         let tab = null;
         if (!isTabMode) tab = tabs[0];
@@ -944,6 +1156,104 @@
     
     // Periodic stats update
     setInterval(() => updateStats(), 500);
+
+    // ========== MOUSE SCROLL HORIZONTAL (DESKTOP) ==========
+    function enableMouseScroll(element) {
+        if (!element) return;
+        element.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                element.scrollLeft += e.deltaY;
+            }
+        });
+    }
+    enableMouseScroll(document.querySelector('.global-menu-bar'));
+    enableMouseScroll(document.querySelector('.toolbar'));
+    enableMouseScroll(document.querySelector('.tab-bar'));
+    
+    // ========== MOUSE SCROLL HORIZONTAL (DESKTOP) ==========
+    function enableMouseScroll(element) {
+        if (!element) return;
+        element.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                element.scrollLeft += e.deltaY;
+            }
+        });
+    }
+    enableMouseScroll(document.querySelector('.global-menu-bar'));
+    enableMouseScroll(document.querySelector('.toolbar'));
+    enableMouseScroll(document.querySelector('.tab-bar'));
+    
+    // ========== DROPDOWN EVENT HANDLER (KLIK UNTUK BUKA) ==========
+    const menuItems = document.querySelectorAll('.global-menu-bar .menu-item');
+    const globalMenuBar = document.querySelector('.global-menu-bar');
+
+    // Pindahkan dropdown ke body agar terbebas dari overflow & backdrop-filter
+    const dropdownMap = new Map();
+    menuItems.forEach(item => {
+        const dropdown = item.querySelector('.dropdown');
+        if (!dropdown) return;
+        
+        document.body.appendChild(dropdown);
+        dropdown.style.zIndex = '9999';
+        dropdownMap.set(item, dropdown);
+    });
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('.dropdown.show').forEach(d => {
+            d.classList.remove('show');
+        });
+    }
+
+    menuItems.forEach(item => {
+        const dropdown = dropdownMap.get(item);
+        if (!dropdown) return;
+
+        // BUKA/TUTUP HANYA DENGAN KLIK (Berlaku untuk Mouse & Touch)
+        item.addEventListener('click', (e) => {
+            e.stopPropagation(); // Mencegah klik memicu event di document
+            
+            const isShowing = dropdown.classList.contains('show');
+
+            if (isShowing) {
+                // Jika menu ini sudah terbuka, klik lagi untuk menutupnya
+                closeAllDropdowns();
+            } else {
+                // Jika belum, tutup semua menu lain lalu buka yang ini
+                closeAllDropdowns(); 
+                dropdown.classList.add('show');
+                
+                // Hitung posisi secara dinamis
+                const rect = item.getBoundingClientRect();
+                dropdown.style.position = 'fixed';
+                dropdown.style.top = `${rect.bottom + 4}px`;
+                
+                // CEK BENTURAN LAYAR KANAN
+                let leftPos = rect.left;
+                const dropdownWidth = dropdown.offsetWidth;
+                
+                // Jika posisi kiri + lebar dropdown melebihi layar, geser ke kiri
+                if (leftPos + dropdownWidth > window.innerWidth) {
+                    // Margin aman 8px dari ujung kanan layar
+                    leftPos = window.innerWidth - dropdownWidth - 8; 
+                }
+                
+                dropdown.style.left = `${leftPos}px`;
+            }
+        });
+    });
+
+    // Tutup menu saat pengguna meng-klik area luar (atau saat mengklik salah satu menu di dalam dropdown)
+    document.addEventListener('click', () => {
+        closeAllDropdowns();
+    });
+
+    // Tutup menu jika menu bar di-scroll
+    globalMenuBar.addEventListener('scroll', closeAllDropdowns, { passive: true });
+</script>
+</body>
+</html>
 </script>
 </body>
 </html>
