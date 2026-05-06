@@ -1,7 +1,7 @@
 const CACHE_NAME = 'textedit-cache-v1';
 const ASSETS_TO_CACHE = [
   './',
-  './TextEdit.html',
+  './index.html', 
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
