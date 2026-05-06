@@ -2,18 +2,18 @@
   "name": "TextEdit - AjarinWeb",
   "short_name": "TextEdit",
   "description": "Aesthetic text editor inspired by macOS Tahoe.",
-  "start_url": "./TextEdit.html",
+  "start_url": "./", 
   "display": "standalone",
   "background_color": "#1c1c1e",
   "theme_color": "#1c1c1e",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
