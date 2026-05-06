@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>TextEdit — AjarinWeb</title>
     <style>
+		:root {
+			--bg-color: rgba(14,14,24,0.45);
+			--highlight: rgba(14, 14, 24, 0.75);
+		}
         * {
             margin: 0;
             padding: 0;
@@ -19,12 +23,18 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            touch-action: pan-x pan-y; /* better touch scrolling */
+            touch-action: pan-x pan-y;
         }
+		
+		.glass-container { position: relative; display: flex; align-items: center; background: transparent; border-radius: 2rem; overflow: hidden; flex: 1 1 auto; box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2); }
+		.glass-filter, .glass-overlay, .glass-specular { position: absolute; inset: 0; border-radius: inherit; }
+		.glass-filter { z-index: 0; backdrop-filter: blur(4px); filter: url(#lensFilter) saturate(120%) brightness(1.15); pointer-events: none; }
+		.glass-overlay { z-index: 1; background: var(--bg-color); }
+		.glass-specular { z-index: 2; box-shadow: inset 1px 1px 0 var(--highlight), inset 0 0 5px var(--highlight); }
+		
         /* GLOBAL MENU BAR */
         .global-menu-bar {
             background: rgba(30,30,34,0.75);
-            backdrop-filter: blur(28px);
             border-bottom: 0.5px solid rgba(255,255,255,0.15);
             padding: 8px 16px;
             display: flex;
@@ -33,7 +43,7 @@
             font-weight: 500;
             color: #e8e8ef;
             flex-shrink: 0;
-            flex-wrap: nowrap; /* Memaksa tetap dalam 1 baris */
+            flex-wrap: nowrap;
             white-space: nowrap;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
@@ -56,10 +66,9 @@
             position: absolute;
             top: 100%;
             left: 0;
-            background: rgba(28,28,32,0.96);
-            backdrop-filter: blur(40px);
-            border: 0.5px solid rgba(255,255,255,0.2);
-            border-radius: 12px;
+            background: transparent;
+			border: none;
+            border-radius: 18px;
             padding: 8px 0;
             min-width: 180px;
             opacity: 0;
@@ -67,15 +76,36 @@
             transform: translateY(-6px);
             transition: opacity 0.12s ease, transform 0.12s ease;
             pointer-events: none;
-            z-index: 200;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-        }
+            z-index: 10000;
+            box-shadow:
+				0 24px 56px rgba(0,0,0,0.65),
+				inset 0 1px 0 rgba(255,255,255,0.28),
+				inset 0 -0.5px 0 rgba(0,0,0,0.35);
+		}
+		.dropdown::before {
+			content: '';
+			position: absolute; top: 0; left: 0; right: 0; height: 1px;
+			background: linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.5) 50%, transparent 95%);
+			pointer-events: none; z-index: 1;
+		}
+		.dropdown::after {
+			content: '';
+			position: absolute; inset: 0;
+			background: linear-gradient(160deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+			pointer-events: none;
+		}
         .dropdown.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-            pointer-events: auto;
-        }
+			opacity: 1;
+			visibility: visible;
+			transform: translateY(0);
+			pointer-events: auto;
+			transition: opacity 0.18s cubic-bezier(.22,1,.36,1), transform 0.22s cubic-bezier(.22,1,.36,1);
+		}
+		.dropdown .dropdown-item {
+			position: relative;
+			z-index: 3;
+			background: transparent;
+		}
         .dropdown-item {
             padding: 8px 16px;
             font-size: 13px;
@@ -139,7 +169,6 @@
             text-overflow: ellipsis;
             margin-right: 48px;
         }
-        /* TOOLBAR RESPONSIF */
         .toolbar {
             padding: 8px 12px;
             display: flex;
@@ -160,7 +189,26 @@
             border-radius: 32px;
             border: 0.3px solid rgba(255,255,255,0.1);
             flex-shrink: 0;
+			position: relative;
+			isolation: isolate;
         }
+		.tool-group::before {
+			content: '';
+			position: absolute; inset: 0;
+			border-radius: 32px;
+			background: rgba(255,255,255,0.07);
+			border: 0.5px solid rgba(255,255,255,0.2);
+			border-bottom-color: rgba(255,255,255,0.07);
+			box-shadow: 0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+			pointer-events: none;
+		}
+		.tool-group::after {
+			content: '';
+			position: absolute; top: 0; left: 6px; right: 6px; height: 45%;
+			border-radius: 28px 28px 20px 20px;
+			background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%);
+			pointer-events: none;
+		}
         .tool-btn {
             background: transparent;
             border: none;
@@ -185,8 +233,28 @@
             margin: 0 4px;
             flex-shrink: 0;
         }
+		
+		.context-item,
+		.dropdown-item {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 8px 16px;
+		}
+		.context-item svg,
+		.dropdown-item svg {
+			width: 13px;
+			height: 13px;
+			flex-shrink: 0;
+			opacity: 0.85;
+		}
+		.shortcut-hint {
+			margin-left: auto;
+			font-size: 11px;
+			color: rgba(160,160,180,0.7);
+			font-family: monospace;
+		}
         
-        /* WORKSPACE CONTENT */
         .workspace-content {
             flex: 1;
             display: flex;
@@ -240,7 +308,6 @@
         }
         .new-tab-btn:active { color: white; }
         
-        /* EDITOR AREA */
         .editor-area {
             flex: 1;
             overflow: hidden;
@@ -315,7 +382,6 @@
         }
         .panel-tab-menu .menu-item:active { background: #2c6eb0; }
         
-        /* RICH EDITOR - FIX LIST MARGIN */
         .rich-editor {
             flex: 1;
             width: 100%;
@@ -336,7 +402,6 @@
             font-family: inherit;
             margin: 0;
         }
-        /* Critical fix: list tidak menabrak margin */
         .rich-editor ul,
         .rich-editor ol {
             margin: 0.5em 0;
@@ -347,7 +412,6 @@
             margin: 0.2em 0;
             line-height: 1.4;
         }
-        /* Untuk list di dalam contenteditable */
         .rich-editor ul ul,
         .rich-editor ol ul,
         .rich-editor ul ol,
@@ -367,24 +431,29 @@
             justify-content: space-between;
             flex-shrink: 0;
         }
-        /* Scrollbar custom */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: rgba(150,160,180,0.5); border-radius: 10px; }
         
-        /* Context menu */
         .context-menu {
             position: fixed;
-            background: rgba(32,32,36,0.94);
-            backdrop-filter: blur(36px);
+            background: rgba(14,14,24,0.45);
+            backdrop-filter: blur(52px) saturate(220%);
             border-radius: 14px;
-            border: 0.5px solid rgba(255,255,255,0.2);
+            border: 0.5px solid rgba(255,255,255,0.22);
             padding: 6px 0;
             min-width: 160px;
             z-index: 10000;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 24px 56px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.28);
             animation: fadeIn 0.08s ease;
+			overflow: hidden;
         }
+		.context-menu::before {
+			content: '';
+			position: absolute; top: 0; left: 0; right: 0; height: 1px;
+			background: linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.5) 50%, transparent 95%);
+			pointer-events: none; z-index: 1;
+		}
         @keyframes fadeIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
         .context-item {
             padding: 10px 18px;
@@ -396,7 +465,6 @@
 		.context-item:hover { background: #2c6eb0; }
         .context-item:active { background: #2c6eb0; }
         
-        /* Responsive tambahan untuk layar sangat kecil */
         @media (max-width: 480px) {
             .window-workspace {
                 margin: 8px;
@@ -413,7 +481,6 @@
             }
         }
 		
-		/* --- MODAL SAVE macOS --- */
 		.mac-modal-overlay {
 			position: fixed;
 			top: 0; left: 0; right: 0; bottom: 0;
@@ -426,15 +493,15 @@
 			animation: fadeIn 0.15s ease;
 		}
 		.mac-modal {
-			background: rgba(30, 30, 34, 0.85);
-			backdrop-filter: blur(40px);
-			-webkit-backdrop-filter: blur(40px);
-			border: 0.5px solid rgba(255,255,255,0.2);
-			border-radius: 12px;
+			background: rgba(16,16,26,0.55);
+			backdrop-filter: blur(56px) saturate(200%);
+			-webkit-backdrop-filter: blur(56px) saturate(200%);
+			border: 0.5px solid rgba(255,255,255,0.24);
+			border-radius: 20px;
 			width: 360px;
 			max-width: 90vw;
 			padding: 20px;
-			box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+			box-shadow: 0 40px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.3);
 			color: #e8e8ef;
 			font-size: 13px;
 			display: flex;
@@ -489,17 +556,129 @@
 			font-weight: 500;
 		}
 		.mac-modal-actions button:active { opacity: 0.8; }
+		
+		/* --- ANIMASI MORPHING FORMAT --- */
+        .format-wrapper {
+            flex: 1;
+            display: grid;
+            grid-template-areas: "stack";
+            align-items: center;
+            overflow: hidden; /* Mencegah elemen keluar batas saat meluncur */
+            border-radius: 6px;
+        }
+        
+        /* Membuat Select dan Input menempati titik koordinat yang sama persis */
+        .format-wrapper > * {
+            grid-area: stack;
+            /* Kurva transisi khas gaya Apple (cepat di awal, memantul halus di akhir) */
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15); 
+        }
+
+        /* State 1: Dropdown Tampil (Default) */
+        #saveFormatSelect {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+        .custom-ext-container {
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+            display: flex;
+            gap: 6px;
+        }
+
+        /* State 2: Kolom Kustom Tampil (Class .is-custom aktif) */
+        .format-wrapper.is-custom #saveFormatSelect {
+            opacity: 0;
+            transform: translateX(-20px);
+            pointer-events: none;
+        }
+        .format-wrapper.is-custom .custom-ext-container {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        /* Tombol Kembali (X) */
+        .custom-ext-container input {
+            width: 100%;
+        }
+        .revert-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #aaa;
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+            flex-shrink: 0;
+            padding: 0;
+            font-size: 14px;
+        }
+        .revert-btn:hover {
+            background: rgba(255, 59, 48, 0.5); /* Merah gaya Apple */
+            color: white;
+            border-color: rgba(255, 59, 48, 0.8);
+        }
     </style>
 </head>
 <body>
 <div class="global-menu-bar">
-    <div class="menu-item">TextEdit<div class="dropdown"><div class="dropdown-item" id="aboutApp">About</div><div class="divider"></div><div class="dropdown-item" id="quitApp">Quit</div></div></div>
-    <div class="menu-item">File<div class="dropdown"><div class="dropdown-item" id="newDocFile">New <span class="shortcut-hint">⌘N</span></div><div class="dropdown-item" id="openDocFile">Open... <span class="shortcut-hint">⌘O</span></div><div class="dropdown-item" id="saveDocFile">Save <span class="shortcut-hint">⌘S</span></div><div class="dropdown-item" id="saveAsFile">Save As...</div><div class="divider"></div><div class="dropdown-item" id="renameFile">Rename...</div><div class="dropdown-item" id="moveToFile">Move To...</div><div class="divider"></div><div class="dropdown-item" id="closeWindowFile">Close</div></div></div>
-    <div class="menu-item">Edit<div class="dropdown"><div class="dropdown-item" id="editUndo">Undo</div><div class="dropdown-item" id="editRedo">Redo</div><div class="divider"></div><div class="dropdown-item" id="editCut">Cut</div><div class="dropdown-item" id="editCopy">Copy</div><div class="dropdown-item" id="editPaste">Paste</div><div class="dropdown-item" id="pasteMatchStyle">Paste & Match Style</div><div class="divider"></div><div class="dropdown-item" id="selectAll">Select All</div></div></div>
-    <div class="menu-item">Format<div class="dropdown"><div class="dropdown-item" id="makePlainText">Make Plain Text</div><div class="dropdown-item" id="toggleWrapLines">Wrap Lines</div><div class="divider"></div><div class="dropdown-item" id="fontBigger">Bigger</div><div class="dropdown-item" id="fontSmaller">Smaller</div></div></div>
-    <div class="menu-item" id="viewMenu">View<div class="dropdown" id="viewDropdown"></div></div>
-    <div class="menu-item">Window<div class="dropdown"><div class="dropdown-item" id="minimizeWindow">Minimize</div><div class="dropdown-item" id="zoomWindow">Zoom</div></div></div>
-    <div class="menu-item">Help<div class="dropdown"><div class="dropdown-item" id="helpSearch">Help</div></div></div>
+	<div class="menu-item">TextEdit
+		<div class="dropdown">
+			<div class="dropdown-item" id="aboutApp">About</div><div class="divider"></div>
+			<div class="dropdown-item" id="quitApp">Quit</div>
+		</div>
+	</div>
+	<div class="menu-item">File
+		<div class="dropdown">
+			<div class="dropdown-item" id="newDocFile">New <span class="shortcut-hint">⌘N</span></div>
+			<div class="dropdown-item" id="openDocFile">Open... <span class="shortcut-hint">⌘O</span></div>
+			<div class="dropdown-item" id="saveDocFile">Save <span class="shortcut-hint">⌘S</span></div>
+			<div class="dropdown-item" id="saveAsFile">Save As...</div><div class="divider"></div>
+			<div class="dropdown-item" id="renameFile">Rename...</div>
+			<div class="dropdown-item" id="moveToFile">Move To...</div><div class="divider"></div>
+			<div class="dropdown-item" id="closeWindowFile">Close</div>
+		</div>
+	</div>
+	<div class="menu-item">Edit
+		<div class="dropdown">
+			<div class="dropdown-item" id="editUndo"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M9 10h6c2.21 0 4 1.79 4 4s-1.79 4-4 4h-3v2h3c3.31 0 6-2.69 6-6s-2.69-6-6-6H9V4L3 9l6 5z"></path></svg> Undo <span class="shortcut-hint">⌘Z</span></div>
+			<div class="dropdown-item" id="editRedo"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M9 20h3v-2H9c-2.21 0-4-1.79-4-4s1.79-4 4-4h6v4l6-5-6-5v4H9c-3.31 0-6 2.69-6 6s2.69 6 6 6"></path></svg> Redo <span class="shortcut-hint">⇧⌘Z</span></div><div class="divider"></div>
+			<div class="dropdown-item" id="editCut"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M10 6.5C10 4.57 8.43 3 6.5 3S3 4.57 3 6.5 4.57 10 6.5 10c.6 0 1.16-.17 1.65-.43L10.58 12l-2.43 2.43C7.66 14.16 7.1 14 6.5 14 4.57 14 3 15.57 3 17.5S4.57 21 6.5 21s3.5-1.57 3.5-3.5c0-.6-.17-1.16-.43-1.65L12 13.42l6.59 6.59h2.83L9.57 8.16c.27-.49.43-1.05.43-1.65ZM6.5 19c-.83 0-1.5-.67-1.5-1.5S5.67 16 6.5 16s1.5.67 1.5 1.5S7.33 19 6.5 19M5 6.5C5 5.67 5.67 5 6.5 5S8 5.67 8 6.5 7.33 8 6.5 8 5 7.33 5 6.5m8.4 2.69 1.41 1.41 6.6-6.6h-2.82z"></path></svg> Cut <span class="shortcut-hint">⌘X</span></div>
+			<div class="dropdown-item" id="editCopy"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M20 2H10c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2m0 12H10V4h10z"></path><path d="M14 20H4V10h2V8H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h-2z"></path></svg> Copy <span class="shortcut-hint">⌘C</span></div>
+			<div class="dropdown-item" id="editPaste"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M20 10h-2V5c0-1.1-.9-2-2-2h-2c0-.55-.45-1-1-1H7c-.55 0-1 .45-1 1H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h6v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2m-10 2v4H4V5h2v2h8V5h2v5h-4c-1.1 0-2 .9-2 2m10 8h-8v-8h8z"></path></svg> Paste <span class="shortcut-hint">⌘V</span></div>
+			<div class="dropdown-item" id="pasteMatchStyle"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M20 10h-2V5c0-1.1-.9-2-2-2h-2c0-.55-.45-1-1-1H7c-.55 0-1 .45-1 1H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h6v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2m-10 2v4H4V5h2v2h8V5h2v5h-4c-1.1 0-2 .9-2 2m10 8h-8v-8h8z"></path></svg> Paste & Match Style <span class="shortcut-hint">⇧⌘V</span></div><div class="divider"></div>
+			<div class="dropdown-item" id="selectAll"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M3 3h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm0 4h2v2H3zM7 3h2v2H7zm0 16h2v2H7zm4-16h2v2h-2zm0 16h2v2h-2zm4-16h2v2h-2zm0 16h2v2h-2zm4-16h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2zM7 17h10V7H7zm2-8h6v6H9z"></path></svg> Select All <span class="shortcut-hint">⌘A</span></div>
+		</div>
+	</div>
+	<div class="menu-item">Format
+		<div class="dropdown">
+			<div class="dropdown-item" id="makePlainText">Make Plain Text</div>
+			<div class="dropdown-item" id="toggleWrapLines">Wrap Lines</div><div class="divider"></div>
+			<div class="dropdown-item" id="fontBigger">Bigger</div>
+			<div class="dropdown-item" id="fontSmaller">Smaller</div>
+		</div>
+	</div>
+	<div class="menu-item" id="viewMenu">View
+		<div class="dropdown" id="viewDropdown"></div>
+	</div>
+	<div class="menu-item">Window
+		<div class="dropdown">
+			<div class="dropdown-item" id="minimizeWindow">Minimize</div>
+			<div class="dropdown-item" id="zoomWindow">Zoom</div>
+		</div>
+	</div>
+	<div class="menu-item">Help
+		<div class="dropdown">
+			<div class="dropdown-item" id="helpSearch">Help</div>
+		</div>
+	</div>
 </div>
 
 <div class="window-workspace">
@@ -510,764 +689,1044 @@
             <div style="width:44px"></div>
         </div>
         <div class="toolbar" id="toolbar">
-            <div class="tool-group"><button class="tool-btn" data-cmd="removeFormat">Plain</button><button class="tool-btn" data-cmd="bold">Bold</button><button class="tool-btn" data-cmd="italic">Italic</button></div>
+            <div class="tool-group"><button class="tool-btn" data-cmd="removeFormat"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="m20.29 2.29-3.4 3.4A8 8 0 0 0 11.99 4c-4.41 0-8 3.59-8 8 0 1.85.63 3.54 1.69 4.9l-3.4 3.4 1.41 1.41 3.4-3.4a8 8 0 0 0 4.9 1.69c4.41 0 8-3.59 8-8 0-1.85-.63-3.54-1.69-4.9l3.4-3.4zM6 12c0-3.31 2.69-6 6-6 1.29 0 2.49.42 3.47 1.11l-8.36 8.36C6.41 14.49 6 13.29 6 12m12 0c0 3.31-2.69 6-6 6-1.29 0-2.49-.42-3.47-1.11l8.36-8.36c.7.98 1.11 2.18 1.11 3.47"></path></svg></button><button class="tool-btn" data-cmd="bold"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M13 4.5H7c-.83 0-1.5.67-1.5 1.5v12c0 .83.67 1.5 1.5 1.5h6.5c2.48 0 4.5-2.02 4.5-4.5 0-1.3-.56-2.46-1.44-3.28.58-.76.94-1.69.94-2.72 0-2.48-2.02-4.5-4.5-4.5m0 3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5H8.5v-3zm.5 9h-5v-3h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5"></path></svg></button><button class="tool-btn" data-cmd="italic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M19 4H9v2h3.67L9.25 18H5v2h10v-2h-3.67l3.42-12H19z"></path></svg></button></div>
             <div class="separator"></div>
-            <div class="tool-group"><button class="tool-btn" data-cmd="justifyLeft">Left</button><button class="tool-btn" data-cmd="justifyCenter">Center</button><button class="tool-btn" data-cmd="justifyRight">Right</button><button class="tool-btn" data-cmd="justifyFull">Justify</button></div>
+            <div class="tool-group"><button class="tool-btn" data-cmd="justifyLeft"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M3 7h12v2H3zm0-4h18v2H3zm0 8h18v2H3zm0 4h12v2H3zm0 4h18v2H3z"></path></svg></button><button class="tool-btn" data-cmd="justifyCenter"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M6 7h12v2H6zM3 3h18v2H3zm0 8h18v2H3zm3 4h12v2H6zm-3 4h18v2H3z"></path></svg></button><button class="tool-btn" data-cmd="justifyRight"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M9 7h12v2H9zM3 3h18v2H3zm0 8h18v2H3zm6 4h12v2H9zm-6 4h18v2H3z"></path></svg></button><button class="tool-btn" data-cmd="justifyFull"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M3 7h18v2H3zm0-4h18v2H3zm0 8h18v2H3zm0 4h18v2H3zm3 4h12v2H6z"></path></svg></button></div>
             <div class="separator"></div>
-            <div class="tool-group"><button class="tool-btn" data-cmd="insertUnorderedList">• List</button><button class="tool-btn" data-cmd="insertOrderedList">1. List</button></div>
+            <div class="tool-group"><button class="tool-btn" data-cmd="insertUnorderedList"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M8 11h13v2H8zm0-5h13v2H8zm0 10h13v2H8zM3 5.5h3v3H3zm0 5h3v3H3zm0 5h3v3H3z"></path></svg></button><button class="tool-btn" data-cmd="insertOrderedList"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M3 16h2v.5H3v1h2v.5H3v1h3v-4H3zM4 6h1v3h1V5H4zm-1 5h2v.5H3V14h3v-1H4v-.5h2V10H3zm5 0h13v2H8zm0-5h13v2H8zm0 10h13v2H8z"></path></svg></button></div>
         </div>
     </div>
     <div class="workspace-content" id="workspaceContent"></div>
     <div class="status-bar" id="statusBar"><span id="stats">0 karakter, 0 baris</span><span id="modeBadge">Rich Text</span></div>
 </div>
 
-<!-- MODAL SAVE FILE macOS -->
 <div class="mac-modal-overlay" id="saveModal">
     <div class="mac-modal">
-        <div class="mac-modal-row">
-            <label>Save As:</label>
-            <input type="text" id="saveFilenameInput" value="Untitled" autocomplete="off">
-        </div>
+        <div class="mac-modal-row"><label>Save As:</label><input type="text" id="saveFilenameInput" value="Untitled" autocomplete="off"></div>
         <div class="mac-modal-row">
             <label>Format:</label>
-            <select id="saveFormatSelect">
-                <option value=".txt">Plain Text (.txt)</option>
-                <option value=".rtf">Rich Text Document (.rtf)</option>
-                <option value=".md">Markdown (.md)</option>
-                <option value=".html">Web Page (.html)</option>
-                <option value="">All Files (*.*)</option>
-            </select>
+            <div class="format-wrapper" id="formatWrapper">
+                <select id="saveFormatSelect">
+                    <option value=".txt">Plain Text (.txt)</option>
+                    <option value=".rtf">Rich Text Document (.rtf)</option>
+                    <option value=".md">Markdown (.md)</option>
+                    <option value=".html">Web Page (.html)</option>
+                    <option value="custom">All Files (*.*)</option>
+                </select>
+                <!-- Container Custom Ext yang akan menimpa Select -->
+                <div class="custom-ext-container" id="customExtContainer">
+                    <input type="text" id="customExtInput" placeholder=".ext" autocomplete="off">
+                    <button id="revertFormatBtn" class="revert-btn" title="Kembali ke Pilihan">✕</button>
+                </div>
+            </div>
         </div>
-        <div class="mac-modal-actions">
-            <button id="cancelSaveBtn">Cancel</button>
-            <button id="confirmSaveBtn" class="primary">Save</button>
-        </div>
+        <div class="mac-modal-actions"><button id="cancelSaveBtn">Cancel</button><button id="confirmSaveBtn" class="primary">Save</button></div>
     </div>
 </div>
 
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <filter id="lensFilter" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+		<feComponentTransfer in="SourceAlpha" result="alpha"><feFuncA type="identity" /></feComponentTransfer>
+        <feGaussianBlur in="alpha" stdDeviation="50" result="blur" />
+        <feDisplacementMap in="SourceGraphic" in2="blur" scale="50" xChannelSelector="A" yChannelSelector="A" />
+    </filter>
+</svg>
+
 <script>
 // ========== UTILITIES ==========
-    function sanitizeToPlainText(html) {
-        const div = document.createElement('div');
-        div.innerHTML = html;
-        return div.innerText;
+function sanitizeToPlainText(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.innerText;
+}
+
+// ========== DATA MODEL ==========
+let tabs = [];
+let nextId = 1;
+let focusedTabId = null;
+let isTabMode = true;
+let isSplit = false;
+let leftTabId = null;
+let rightTabId = null;
+let statusBarVisible = true;
+let isWrapLines = true;
+
+function createTab(name, contentHTML) {
+    return { id: nextId++, name: name || 'Untitled', contentHTML: contentHTML || '' };
+}
+function addTab(name, contentHTML, setFocus = true) {
+    const newTab = createTab(name, contentHTML);
+    tabs.push(newTab);
+    if (setFocus) focusedTabId = newTab.id;
+    if (isSplit && tabs.length < 2) disableSplit();
+    renderWorkspace();
+    return newTab;
+}
+function closeTab(tabId) {
+    if (tabs.length <= 1) return;
+    const idx = tabs.findIndex(t => t.id === tabId);
+    if (idx !== -1) tabs.splice(idx, 1);
+    if (focusedTabId === tabId) focusedTabId = tabs[0]?.id || null;
+    if (leftTabId === tabId) leftTabId = null;
+    if (rightTabId === tabId) rightTabId = null;
+    if (isSplit && tabs.length < 2) disableSplit();
+    if (isSplit) {
+        if (!leftTabId) leftTabId = tabs[0]?.id;
+        if (!rightTabId) rightTabId = tabs[1]?.id || (tabs.length > 1 ? tabs[1].id : tabs[0]?.id);
     }
-    
-    // ========== DATA MODEL ==========
-    let tabs = [];
-    let nextId = 1;
-    let focusedTabId = null;
-    let isTabMode = true;
-    let isSplit = false;
-    let leftTabId = null;
-    let rightTabId = null;
-    let statusBarVisible = true;
-    let isWrapLines = true; // Variabel dipindah ke atas agar dapat diakses global
-    
-    function createTab(name, contentHTML) {
-        return { id: nextId++, name: name || 'Untitled', contentHTML: contentHTML || '' };
-    }
-    
-    function addTab(name, contentHTML, setFocus = true) {
-        const newTab = createTab(name, contentHTML);
-        tabs.push(newTab);
-        if (setFocus) focusedTabId = newTab.id;
-        if (isSplit && tabs.length < 2) disableSplit();
-        renderWorkspace();
-        return newTab;
-    }
-    
-    function closeTab(tabId) {
-        if (tabs.length <= 1) return;
-        const idx = tabs.findIndex(t => t.id === tabId);
-        if (idx !== -1) tabs.splice(idx, 1);
-        if (focusedTabId === tabId) focusedTabId = tabs[0]?.id || null;
-        if (leftTabId === tabId) leftTabId = null;
-        if (rightTabId === tabId) rightTabId = null;
-        if (isSplit && tabs.length < 2) disableSplit();
-        if (isSplit) {
-            if (!leftTabId) leftTabId = tabs[0]?.id;
-            if (!rightTabId) rightTabId = tabs[1]?.id || (tabs.length > 1 ? tabs[1].id : tabs[0]?.id);
-        }
-        renderWorkspace();
-    }
-    
-    function setFocusedTab(tabId) {
-        if (focusedTabId === tabId) return;
-        focusedTabId = tabId;
-        updateWindowTitle();
-        
-        // PERBAIKAN: Hanya update visual warna tab. JANGAN panggil renderWorkspace()
-        // agar editor tidak hancur dan kursor tidak hilang saat di-klik.
-        document.querySelectorAll('.tab').forEach(tabEl => {
-            const closeBtn = tabEl.querySelector('.tab-close');
-            if (closeBtn && parseInt(closeBtn.getAttribute('data-id')) === tabId) {
-                tabEl.classList.add('active');
-            } else {
-                tabEl.classList.remove('active');
-            }
-        });
-    }
-    
-    function renameTab(tabId, newName) {
-        const tab = tabs.find(t => t.id === tabId);
-        if (tab) tab.name = newName;
-        renderWorkspace();
-        updateWindowTitle();
-    }
-    
-    function updateTabContent(tabId, html) {
-        const tab = tabs.find(t => t.id === tabId);
-        if (tab) tab.contentHTML = html;
-        updateStats();
-    }
-    
-    function updateWindowTitle() {
-        if (!isTabMode) {
-            const doc = tabs[0];
-            document.getElementById('windowTitle').innerText = doc ? doc.name : 'TextEdit';
-        } else if (focusedTabId) {
-            const tab = tabs.find(t => t.id === focusedTabId);
-            document.getElementById('windowTitle').innerText = tab ? tab.name : 'Untitled';
+    renderWorkspace();
+}
+function setFocusedTab(tabId) {
+    if (focusedTabId === tabId) return;
+    focusedTabId = tabId;
+    updateWindowTitle();
+    document.querySelectorAll('.tab').forEach(tabEl => {
+        const closeBtn = tabEl.querySelector('.tab-close');
+        if (closeBtn && parseInt(closeBtn.getAttribute('data-id')) === tabId) {
+            tabEl.classList.add('active');
         } else {
-            document.getElementById('windowTitle').innerText = 'TextEdit';
+            tabEl.classList.remove('active');
         }
+    });
+}
+function renameTab(tabId, newName) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) tab.name = newName;
+    renderWorkspace();
+    updateWindowTitle();
+}
+function updateTabContent(tabId, html) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) tab.contentHTML = html;
+    updateStats();
+}
+function updateWindowTitle() {
+    if (!isTabMode) {
+        const doc = tabs[0];
+        document.getElementById('windowTitle').innerText = doc ? doc.name : 'TextEdit';
+    } else if (focusedTabId) {
+        const tab = tabs.find(t => t.id === focusedTabId);
+        document.getElementById('windowTitle').innerText = tab ? tab.name : 'Untitled';
+    } else {
+        document.getElementById('windowTitle').innerText = 'TextEdit';
     }
-    
-    function updateStats() {
-        let activeHTML = '';
-        if (!isTabMode) {
-            if (tabs[0]) activeHTML = tabs[0].contentHTML;
-        } else if (focusedTabId) {
-            const tab = tabs.find(t => t.id === focusedTabId);
-            if (tab) activeHTML = tab.contentHTML;
-        }
-        
-        const text = sanitizeToPlainText(activeHTML);
-        const chars = text.length;
-        const lines = text.split(/\r?\n/).length;
-        document.getElementById('stats').innerText = `${chars} karakter, ${lines} baris`;
-
-        const modeBadge = document.getElementById('modeBadge');
-        if (modeBadge) {
-            const hasPre = /<pre[^>]*>/i.test(activeHTML);
-            const testHtml = activeHTML.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
-            const hasRichFormat = /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml);
-
-            if (hasPre) {
-                modeBadge.innerText = 'Plain Text';
-            } else if (hasRichFormat) {
-                modeBadge.innerText = 'Rich Text';
-            } else {
-                modeBadge.innerText = 'Plain Text'; 
-            }
-        }
+}
+function updateStats() {
+    let activeHTML = '';
+    if (!isTabMode) {
+        if (tabs[0]) activeHTML = tabs[0].contentHTML;
+    } else if (focusedTabId) {
+        const tab = tabs.find(t => t.id === focusedTabId);
+        if (tab) activeHTML = tab.contentHTML;
     }
-    
-    // ========== RENDER ==========
-    function renderWorkspace() {
-        const container = document.getElementById('workspaceContent');
-        container.innerHTML = '';
-        
-        if (isTabMode) {
-            const tabBar = document.createElement('div');
-            tabBar.className = 'tab-bar';
-            for (let tab of tabs) {
-                const tabDiv = document.createElement('div');
-                // PERBAIKAN: Selalu nyalakan class active tanpa peduli isSplit
-                tabDiv.className = `tab ${focusedTabId === tab.id ? 'active' : ''}`;
-                tabDiv.innerHTML = `<span>${tab.name}</span><span class="tab-close" data-id="${tab.id}">✕</span>`;
-                tabDiv.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('tab-close')) {
-                        if (!isSplit) {
-                            setFocusedTab(tab.id);
-                            renderWorkspace(); // Harus dirender jika mode layar tunggal untuk ganti halaman
-                        } else {
-                            setFocusedTab(tab.id); // Jika split, cukup ganti status fokusnya saja
-                        }
+    const text = sanitizeToPlainText(activeHTML);
+    const chars = text.length;
+    const lines = text.split(/\r?\n/).length;
+    document.getElementById('stats').innerText = `${chars} karakter, ${lines} baris`;
+    const modeBadge = document.getElementById('modeBadge');
+    if (modeBadge) {
+        const hasPre = /<pre[^>]*>/i.test(activeHTML);
+        const testHtml = activeHTML.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
+        const hasRichFormat = /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml);
+        if (hasPre) modeBadge.innerText = 'Plain Text';
+        else if (hasRichFormat) modeBadge.innerText = 'Rich Text';
+        else modeBadge.innerText = 'Plain Text';
+    }
+}
+
+// ========== RENDER ==========
+function renderWorkspace() {
+    const container = document.getElementById('workspaceContent');
+    container.innerHTML = '';
+    if (isTabMode) {
+        const tabBar = document.createElement('div');
+        tabBar.className = 'tab-bar';
+        for (let tab of tabs) {
+            const tabDiv = document.createElement('div');
+            tabDiv.className = `tab ${focusedTabId === tab.id ? 'active' : ''}`;
+            tabDiv.innerHTML = `<span>${tab.name}</span><span class="tab-close" data-id="${tab.id}">✕</span>`;
+            tabDiv.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('tab-close')) {
+                    if (!isSplit) {
+                        setFocusedTab(tab.id);
+                        renderWorkspace();
+                    } else {
+                        setFocusedTab(tab.id);
                     }
-                });
-                tabDiv.querySelector('.tab-close').addEventListener('click', (e) => { e.stopPropagation(); closeTab(tab.id); });
-                tabBar.appendChild(tabDiv);
-            }
-            const newBtn = document.createElement('button');
-            newBtn.textContent = '+';
-            newBtn.className = 'new-tab-btn';
-            newBtn.addEventListener('click', () => addTab('Untitled', ''));
-            tabBar.appendChild(newBtn);
-            container.appendChild(tabBar);
+                }
+            });
+            tabDiv.querySelector('.tab-close').addEventListener('click', (e) => { e.stopPropagation(); closeTab(tab.id); });
+            tabBar.appendChild(tabDiv);
         }
-        
-        const editorArea = document.createElement('div');
-        editorArea.className = 'editor-area';
-        
-        if (!isTabMode) {
-            const doc = tabs[0];
-            if (doc) editorArea.appendChild(createRichEditor(doc));
-        } else if (!isSplit) {
-            const current = tabs.find(t => t.id === focusedTabId) || tabs[0];
-            if (current) editorArea.appendChild(createRichEditor(current));
-        } else {
-            const splitDiv = document.createElement('div');
-            splitDiv.className = 'split-container';
-            const leftTab = tabs.find(t => t.id === leftTabId) || tabs[0];
-            const rightTab = tabs.find(t => t.id === rightTabId) || (tabs[1] || tabs[0]);
-            splitDiv.appendChild(createSplitPanel(leftTab, 'left'));
-            splitDiv.appendChild(createSplitPanel(rightTab, 'right'));
-            editorArea.appendChild(splitDiv);
+        const newBtn = document.createElement('button');
+        newBtn.textContent = '+';
+        newBtn.className = 'new-tab-btn';
+        newBtn.addEventListener('click', () => addTab('Untitled', ''));
+        tabBar.appendChild(newBtn);
+        container.appendChild(tabBar);
+    }
+    const editorArea = document.createElement('div');
+    editorArea.className = 'editor-area';
+    if (!isTabMode) {
+        const doc = tabs[0];
+        if (doc) editorArea.appendChild(createRichEditor(doc));
+    } else if (!isSplit) {
+        const current = tabs.find(t => t.id === focusedTabId) || tabs[0];
+        if (current) editorArea.appendChild(createRichEditor(current));
+    } else {
+        const splitDiv = document.createElement('div');
+        splitDiv.className = 'split-container';
+        const leftTab = tabs.find(t => t.id === leftTabId) || tabs[0];
+        const rightTab = tabs.find(t => t.id === rightTabId) || (tabs[1] || tabs[0]);
+        splitDiv.appendChild(createSplitPanel(leftTab, 'left'));
+        splitDiv.appendChild(createSplitPanel(rightTab, 'right'));
+        editorArea.appendChild(splitDiv);
+    }
+    container.appendChild(editorArea);
+    updateStats();
+    updateWindowTitle();
+    updateViewMenu();
+	
+	
+    document.querySelectorAll('.panel-tab-picker').forEach(pickerBtn => {
+        applyLiquidGlassToElement(pickerBtn, {
+        radius: 16,       // Karena ukuran tombolnya 32x32px bulat sempurna
+        bezelWidth: 8,    // Bezel kecil karena area tombol kecil
+        glassThickness: 40,
+        refractiveIndex: 1.5
+        });
+    });
+    
+}
+function createSplitPanel(tab, side) {
+    const containerDiv = document.createElement('div');
+    containerDiv.className = 'split-tab-panel';
+    const actionDiv = document.createElement('div');
+    actionDiv.className = 'panel-actions';
+    const picker = document.createElement('div');
+    picker.className = 'panel-tab-picker';
+    picker.innerHTML = '⋯';
+    actionDiv.appendChild(picker);
+    const menuDiv = document.createElement('div');
+    menuDiv.className = 'panel-tab-menu';
+    actionDiv.appendChild(menuDiv);
+    function updateMenu() {
+        menuDiv.innerHTML = '';
+        for (let t of tabs) {
+            const item = document.createElement('div');
+            item.className = 'menu-item';
+            item.innerText = t.name;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (side === 'left') leftTabId = t.id;
+                else rightTabId = t.id;
+                renderWorkspace();
+            });
+            menuDiv.appendChild(item);
         }
-        container.appendChild(editorArea);
+    }
+    updateMenu();
+    picker.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = menuDiv.style.display === 'block';
+        document.querySelectorAll('.panel-tab-menu').forEach(m => m.style.display = 'none');
+        menuDiv.style.display = isVisible ? 'none' : 'block';
+		
+		
+        applyLiquidGlassToElement(menuDiv, {
+            radius: 12,        // Sesuai dengan CSS border-radius
+            bezelWidth: 16,
+            glassThickness: 80,
+            refractiveIndex: 1.6
+        });
+        
+    });
+    containerDiv.appendChild(actionDiv);
+    const editorDiv = createRichEditor(tab);
+    containerDiv.appendChild(editorDiv);
+    return containerDiv;
+}
+function createRichEditor(tab) {
+    const editorDiv = document.createElement('div');
+    editorDiv.className = 'rich-editor';
+    editorDiv.contentEditable = 'true';
+    editorDiv.style.whiteSpace = isWrapLines ? 'pre-wrap' : 'pre';
+    editorDiv.innerHTML = tab.contentHTML || '';
+    editorDiv.addEventListener('input', () => {
+        tab.contentHTML = editorDiv.innerHTML;
         updateStats();
-        updateWindowTitle();
-        updateViewMenu();
-    }
-    
-    function createSplitPanel(tab, side) {
-        const containerDiv = document.createElement('div');
-        containerDiv.className = 'split-tab-panel';
-        
-        const actionDiv = document.createElement('div');
-        actionDiv.className = 'panel-actions';
-        const picker = document.createElement('div');
-        picker.className = 'panel-tab-picker';
-        picker.innerHTML = '⋯';
-        actionDiv.appendChild(picker);
-        
-        const menuDiv = document.createElement('div');
-        menuDiv.className = 'panel-tab-menu';
-        actionDiv.appendChild(menuDiv);
-        
-        function updateMenu() {
-            menuDiv.innerHTML = '';
-            for (let t of tabs) {
-                const item = document.createElement('div');
-                item.className = 'menu-item';
-                item.innerText = t.name;
-                item.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (side === 'left') leftTabId = t.id;
-                    else rightTabId = t.id;
-                    renderWorkspace();
-                });
-                menuDiv.appendChild(item);
-            }
-        }
-        updateMenu();
-        
-        picker.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isVisible = menuDiv.style.display === 'block';
-            document.querySelectorAll('.panel-tab-menu').forEach(m => m.style.display = 'none');
-            menuDiv.style.display = isVisible ? 'none' : 'block';
-        });
-        
-        containerDiv.appendChild(actionDiv);
-        const editorDiv = createRichEditor(tab);
-        containerDiv.appendChild(editorDiv);
-        return containerDiv;
-    }
-    
-    function createRichEditor(tab) {
-        const editorDiv = document.createElement('div');
-        editorDiv.className = 'rich-editor';
-        editorDiv.contentEditable = 'true';
-        
-        // PERBAIKAN: Terapkan status Wrap Lines bawaan saat editor baru diciptakan
-        editorDiv.style.whiteSpace = isWrapLines ? 'pre-wrap' : 'pre';
-        
-        editorDiv.innerHTML = tab.contentHTML || '';
-        editorDiv.addEventListener('input', () => {
-            tab.contentHTML = editorDiv.innerHTML;
-            updateStats();
-        });
-        editorDiv.addEventListener('focus', () => {
-            setFocusedTab(tab.id); // Sekarang aman, tidak akan menghancurkan kursor
-        });
-        editorDiv.addEventListener('paste', (e) => {
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-            const cleanText = sanitizeToPlainText(text);
-            document.execCommand('insertText', false, cleanText);
-            tab.contentHTML = editorDiv.innerHTML;
-            updateStats();
-        });
-        editorDiv.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            showContextMenu(e.clientX, e.clientY, editorDiv, tab);
-        });
-        return editorDiv;
-    }
-    
-    function showContextMenu(x, y, editorDiv, tab) {
-        const existing = document.querySelector('.context-menu');
-        if (existing) existing.remove();
-        
-        let savedSelection = null;
-        const sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-            savedSelection = sel.getRangeAt(0).cloneRange();
-        }
-        
-        const menu = document.createElement('div');
-        menu.className = 'context-menu';
-        menu.innerHTML = `
-            <div class="context-item" data-action="cut">Cut</div>
-            <div class="context-item" data-action="copy">Copy</div>
-            <div class="context-item" data-action="paste">Paste & Match Style</div>
-            <div class="divider"></div>
-            <div class="context-item" data-action="selectAll">Select All</div>
-            <div class="context-item" data-action="clear">Clear</div>
-        `;
-        
-        document.body.appendChild(menu);
-        
-        const menuWidth = menu.offsetWidth;
-        const menuHeight = menu.offsetHeight;
-        let posX = x;
-        let posY = y;
-
-        if (posX + menuWidth > window.innerWidth) posX = window.innerWidth - menuWidth - 8;
-        if (posY + menuHeight > window.innerHeight) posY = window.innerHeight - menuHeight - 8;
-
-        menu.style.left = posX + 'px';
-        menu.style.top = posY + 'px';
-
-        const restoreFocusAndSelection = () => {
-            editorDiv.focus();
-            if (savedSelection) {
-                const currentSel = window.getSelection();
-                currentSel.removeAllRanges();
-                currentSel.addRange(savedSelection);
-            }
-        };
-
-        menu.querySelectorAll('.context-item').forEach(item => {
-            item.addEventListener('pointerdown', async (e) => {
-                e.preventDefault(); 
-                e.stopPropagation(); 
-                
-                const action = item.getAttribute('data-action');
-                restoreFocusAndSelection();
-                
-                if (action === 'cut') {
-                    document.execCommand('cut');
-                } else if (action === 'copy') {
-                    document.execCommand('copy');
-                } else if (action === 'paste') {
-                    try {
-                        const text = await navigator.clipboard.readText();
-                        const clean = sanitizeToPlainText(text);
-                        document.execCommand('insertText', false, clean);
-                    } catch (err) {
-                        console.error('Gagal paste:', err);
-                        alert('Akses clipboard diblokir. Gunakan paste bawaan sistem operasi Anda.');
-                    }
-                } else if (action === 'selectAll') {
-                    document.execCommand('selectAll');
-                } else if (action === 'clear') {
-                    document.execCommand('delete');
-                }
-                
-                tab.contentHTML = editorDiv.innerHTML;
-                updateStats();
-                menu.remove();
-            });
-        });
-        
-        setTimeout(() => {
-            const autoClose = (e) => {
-                if (!menu.contains(e.target)) {
-                    menu.remove();
-                    document.removeEventListener('pointerdown', autoClose);
-                }
-            };
-            document.addEventListener('pointerdown', autoClose);
-        }, 10);
-    }
-    
-    // ========== SPLIT CONTROL ==========
-    function enableSplit() {
-        if (!isTabMode) return;
-        if (tabs.length < 2) addTab('Untitled', '');
-        if (!isSplit) {
-            const current = tabs.find(t => t.id === focusedTabId) || tabs[0];
-            let other = tabs.find(t => t.id !== current.id);
-            if (!other && tabs.length >= 2) other = tabs[1];
-            if (!other && tabs.length === 1) other = addTab('Untitled', '', false);
-            leftTabId = current.id;
-            rightTabId = other.id;
-            isSplit = true;
-            renderWorkspace();
-        }
-    }
-    
-    function disableSplit() {
-        if (isSplit) {
-            isSplit = false;
-            leftTabId = null;
-            rightTabId = null;
-            if (!focusedTabId && tabs.length) focusedTabId = tabs[0].id;
-            renderWorkspace();
-        }
-    }
-    
-    // ========== MENU VIEW ==========
-    function updateViewMenu() {
-        const viewDropdown = document.getElementById('viewDropdown');
-        if (!viewDropdown) return;
-        viewDropdown.innerHTML = '';
-        const statusItem = document.createElement('div');
-        statusItem.className = 'dropdown-item';
-        statusItem.innerText = statusBarVisible ? 'Hide Status Bar' : 'Show Status Bar';
-        statusItem.addEventListener('click', () => {
-            statusBarVisible = !statusBarVisible;
-            document.getElementById('statusBar').style.display = statusBarVisible ? 'flex' : 'none';
-            updateViewMenu();
-        });
-        viewDropdown.appendChild(statusItem);
-        viewDropdown.appendChild(document.createElement('div')).className = 'divider';
-        const tabModeItem = document.createElement('div');
-        tabModeItem.className = 'dropdown-item';
-        tabModeItem.innerText = isTabMode ? 'Disable Tabs' : 'Enable Tabs';
-        tabModeItem.addEventListener('click', () => {
-            isTabMode = !isTabMode;
-            if (!isTabMode) {
-                const activeDoc = tabs.find(t => t.id === focusedTabId) || tabs[0];
-                if (activeDoc) {
-                    tabs = [activeDoc];
-                    focusedTabId = activeDoc.id;
-                }
-                isSplit = false;
-                leftTabId = null; rightTabId = null;
-            } else {
-                if (tabs.length === 0) addTab('Untitled', '');
-                if (!focusedTabId && tabs.length) focusedTabId = tabs[0].id;
-            }
-            renderWorkspace();
-            updateViewMenu();
-        });
-        viewDropdown.appendChild(tabModeItem);
-        if (isTabMode && tabs.length >= 2) {
-            const splitItem = document.createElement('div');
-            splitItem.className = 'dropdown-item';
-            splitItem.innerText = isSplit ? 'Disable Split View' : 'Enable Split View';
-            splitItem.addEventListener('click', () => {
-                if (isSplit) disableSplit();
-                else enableSplit();
-                updateViewMenu();
-            });
-            viewDropdown.appendChild(splitItem);
-        }
-    }
-    
-    // ========== RIBBON COMMANDS ==========
-    function applyCommandToFocusedEditor(cmd, value = null) {
-        let editorDiv = null;
-        if (!isTabMode) {
-            editorDiv = document.querySelector('.rich-editor');
-        } else if (!isSplit) {
-            editorDiv = document.querySelector('.rich-editor');
-        } else {
-            const focused = document.activeElement;
-            if (focused && focused.classList && focused.classList.contains('rich-editor')) {
-                editorDiv = focused;
-            } else {
-                editorDiv = document.querySelector('.rich-editor');
-            }
-        }
-        if (!editorDiv) return;
+    });
+    editorDiv.addEventListener('focus', () => {
+        setFocusedTab(tab.id);
+    });
+    editorDiv.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        const cleanText = sanitizeToPlainText(text);
+        document.execCommand('insertText', false, cleanText);
+        tab.contentHTML = editorDiv.innerHTML;
+        updateStats();
+    });
+    editorDiv.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showContextMenu(e.clientX, e.clientY, editorDiv, tab);
+    });
+    return editorDiv;
+}
+function showContextMenu(x, y, editorDiv, tab) {
+    const existing = document.querySelector('.context-menu');
+    if (existing) existing.remove();
+    let savedSelection = null;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) savedSelection = sel.getRangeAt(0).cloneRange();
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.innerHTML = `
+        <div class="context-item" data-action="cut"><svg xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M10 6.5C10 4.57 8.43 3 6.5 3S3 4.57 3 6.5 4.57 10 6.5 10c.6 0 1.16-.17 1.65-.43L10.58 12l-2.43 2.43C7.66 14.16 7.1 14 6.5 14 4.57 14 3 15.57 3 17.5S4.57 21 6.5 21s3.5-1.57 3.5-3.5c0-.6-.17-1.16-.43-1.65L12 13.42l6.59 6.59h2.83L9.57 8.16c.27-.49.43-1.05.43-1.65ZM6.5 19c-.83 0-1.5-.67-1.5-1.5S5.67 16 6.5 16s1.5.67 1.5 1.5S7.33 19 6.5 19M5 6.5C5 5.67 5.67 5 6.5 5S8 5.67 8 6.5 7.33 8 6.5 8 5 7.33 5 6.5m8.4 2.69 1.41 1.41 6.6-6.6h-2.82z"></path></svg> Cut <span class="shortcut-hint">⌘X</span></div>
+        <div class="context-item" data-action="copy"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M20 2H10c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2m0 12H10V4h10z"></path><path d="M14 20H4V10h2V8H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h-2z"></path></svg> Copy <span class="shortcut-hint">⌘C</span></div>
+        <div class="context-item" data-action="paste"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M20 10h-2V5c0-1.1-.9-2-2-2h-2c0-.55-.45-1-1-1H7c-.55 0-1 .45-1 1H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h6v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2m-10 2v4H4V5h2v2h8V5h2v5h-4c-1.1 0-2 .9-2 2m10 8h-8v-8h8z"></path></svg> Paste & Match Style <span class="shortcut-hint">⌘V</span></div>
+        <div class="divider"></div>
+        <div class="context-item" data-action="selectAll"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M3 3h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm0 4h2v2H3zM7 3h2v2H7zm0 16h2v2H7zm4-16h2v2h-2zm0 16h2v2h-2zm4-16h2v2h-2zm0 16h2v2h-2zm4-16h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2zM7 17h10V7H7zm2-8h6v6H9z"></path></svg> Select All <span class="shortcut-hint">⌘A</span></div>
+        <div class="context-item" data-action="clear"><svg  xmlns="http://www.w3.org/2000/svg" viewBox="2 2 20 20" fill="currentColor" style="width:1em;height:1em;display:block;pointer-events:none;"><path d="M20 4H8.51c-.64 0-1.25.31-1.63.84l-4.7 6.58a.99.99 0 0 0 0 1.16l4.7 6.58c.37.52.98.84 1.63.84H20c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2m0 14H8.51l-4.29-6 4.29-6H20z"></path><path d="m9.79 9.21 2.8 2.79-2.8 2.79 1.42 1.42 2.79-2.8 2.79 2.8 1.42-1.42-2.8-2.79 2.8-2.79-1.42-1.42-2.79 2.8-2.79-2.8z"></path></svg> Clear <span class="shortcut-hint">Delete</span></div>
+    `;
+    document.body.appendChild(menu);
+    const menuWidth = menu.offsetWidth, menuHeight = menu.offsetHeight;
+    let posX = x, posY = y;
+    if (posX + menuWidth > window.innerWidth) posX = window.innerWidth - menuWidth - 8;
+    if (posY + menuHeight > window.innerHeight) posY = window.innerHeight - menuHeight - 8;
+    menu.style.left = posX + 'px';
+    menu.style.top = posY + 'px';
+	applyLiquidGlassToElement(menu, { radius: 14, bezelWidth: 22, glassThickness: 100, refractiveIndex: 1.8 });
+	
+    const restoreFocusAndSelection = () => {
         editorDiv.focus();
-        if (cmd === 'removeFormat') {
-            document.execCommand('removeFormat', false, null);
-        } else if (cmd === 'bold' || cmd === 'italic') {
-            document.execCommand(cmd, false, null);
-        } else if (cmd === 'justifyLeft' || cmd === 'justifyCenter' || cmd === 'justifyRight' || cmd === 'justifyFull') {
-            document.execCommand(cmd, false, null);
-        } else if (cmd === 'insertUnorderedList' || cmd === 'insertOrderedList') {
-            document.execCommand(cmd, false, null);
+        if (savedSelection) {
+            const currentSel = window.getSelection();
+            currentSel.removeAllRanges();
+            currentSel.addRange(savedSelection);
         }
-        const tabId = focusedTabId;
-        if (tabId) {
-            const tab = tabs.find(t => t.id === tabId);
-            if (tab) tab.contentHTML = editorDiv.innerHTML;
-        }
-        updateStats();
-    }
-    
-    function bindToolbar() {
-        const btns = document.querySelectorAll('.tool-btn');
-        btns.forEach(btn => {
-            btn.removeEventListener('click', toolbarHandler);
-            btn.addEventListener('click', toolbarHandler);
-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, { passive: false });
+    };
+    menu.querySelectorAll('.context-item').forEach(item => {
+        item.addEventListener('pointerdown', async (e) => {
+            e.preventDefault(); e.stopPropagation();
+            const action = item.getAttribute('data-action');
+            restoreFocusAndSelection();
+            if (action === 'cut') document.execCommand('cut');
+            else if (action === 'copy') document.execCommand('copy');
+            else if (action === 'paste') {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    const clean = sanitizeToPlainText(text);
+                    document.execCommand('insertText', false, clean);
+                } catch (err) { alert('Akses clipboard diblokir. Gunakan paste bawaan sistem operasi Anda.'); }
+            } else if (action === 'selectAll') document.execCommand('selectAll');
+            else if (action === 'clear') document.execCommand('delete');
+            tab.contentHTML = editorDiv.innerHTML;
+            updateStats();
+            menu.remove();
         });
+    });
+    setTimeout(() => {
+        const autoClose = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('pointerdown', autoClose); } };
+        document.addEventListener('pointerdown', autoClose);
+    }, 10);
+}
+function enableSplit() {
+    if (!isTabMode) return;
+    if (tabs.length < 2) addTab('Untitled', '');
+    if (!isSplit) {
+        const current = tabs.find(t => t.id === focusedTabId) || tabs[0];
+        let other = tabs.find(t => t.id !== current.id);
+        if (!other && tabs.length >= 2) other = tabs[1];
+        if (!other && tabs.length === 1) other = addTab('Untitled', '', false);
+        leftTabId = current.id;
+        rightTabId = other.id;
+        isSplit = true;
+        renderWorkspace();
     }
-    function toolbarHandler(e) {
-        const cmd = this.getAttribute('data-cmd');
-        if (cmd) applyCommandToFocusedEditor(cmd);
+}
+function disableSplit() {
+    if (isSplit) {
+        isSplit = false;
+        leftTabId = null;
+        rightTabId = null;
+        if (!focusedTabId && tabs.length) focusedTabId = tabs[0].id;
+        renderWorkspace();
     }
-    
-    // ========== INIT ==========
-    const initialHTML = '';
-    const initialTab = createTab('Untitled', initialHTML);
+}
+function updateViewMenu() {
+    const viewDropdown = document.getElementById('viewDropdown');
+    if (!viewDropdown) return;
+    viewDropdown.innerHTML = '';
+    const statusItem = document.createElement('div');
+    statusItem.className = 'dropdown-item';
+    statusItem.innerText = statusBarVisible ? 'Hide Status Bar' : 'Show Status Bar';
+    statusItem.addEventListener('click', () => {
+        statusBarVisible = !statusBarVisible;
+        document.getElementById('statusBar').style.display = statusBarVisible ? 'flex' : 'none';
+        updateViewMenu();
+    });
+    viewDropdown.appendChild(statusItem);
+    viewDropdown.appendChild(document.createElement('div')).className = 'divider';
+    const tabModeItem = document.createElement('div');
+    tabModeItem.className = 'dropdown-item';
+    tabModeItem.innerText = isTabMode ? 'Disable Tabs' : 'Enable Tabs';
+    tabModeItem.addEventListener('click', () => {
+        isTabMode = !isTabMode;
+        if (!isTabMode) {
+            const activeDoc = tabs.find(t => t.id === focusedTabId) || tabs[0];
+            if (activeDoc) {
+                tabs = [activeDoc];
+                focusedTabId = activeDoc.id;
+            }
+            isSplit = false;
+            leftTabId = null; rightTabId = null;
+        } else {
+            if (tabs.length === 0) addTab('Untitled', '');
+            if (!focusedTabId && tabs.length) focusedTabId = tabs[0].id;
+        }
+        renderWorkspace();
+        updateViewMenu();
+    });
+    viewDropdown.appendChild(tabModeItem);
+    if (isTabMode && tabs.length >= 2) {
+        const splitItem = document.createElement('div');
+        splitItem.className = 'dropdown-item';
+        splitItem.innerText = isSplit ? 'Disable Split View' : 'Enable Split View';
+        splitItem.addEventListener('click', () => {
+            if (isSplit) disableSplit();
+            else enableSplit();
+            updateViewMenu();
+        });
+        viewDropdown.appendChild(splitItem);
+    }
+}
+function applyCommandToFocusedEditor(cmd) {
+    let editorDiv = null;
+    if (!isTabMode || !isSplit) editorDiv = document.querySelector('.rich-editor');
+    else {
+        const focused = document.activeElement;
+        if (focused && focused.classList && focused.classList.contains('rich-editor')) editorDiv = focused;
+        else editorDiv = document.querySelector('.rich-editor');
+    }
+    if (!editorDiv) return;
+    editorDiv.focus();
+    if (cmd === 'removeFormat') document.execCommand('removeFormat');
+    else if (cmd === 'bold' || cmd === 'italic') document.execCommand(cmd);
+    else if (cmd === 'justifyLeft' || cmd === 'justifyCenter' || cmd === 'justifyRight' || cmd === 'justifyFull') document.execCommand(cmd);
+    else if (cmd === 'insertUnorderedList' || cmd === 'insertOrderedList') document.execCommand(cmd);
+    const tab = tabs.find(t => t.id === focusedTabId);
+    if (tab) tab.contentHTML = editorDiv.innerHTML;
+    updateStats();
+}
+function bindToolbar() {
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.removeEventListener('click', toolbarHandler);
+        btn.addEventListener('click', toolbarHandler);
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, { passive: false });
+    });
+}
+function toolbarHandler(e) {
+    const cmd = this.getAttribute('data-cmd');
+    if (cmd) applyCommandToFocusedEditor(cmd);
+}
+function init() {
+    const initialTab = createTab('Untitled', '');
     tabs.push(initialTab);
     focusedTabId = initialTab.id;
-    isTabMode = true;
-    isSplit = false;
-    statusBarVisible = true;
+    isTabMode = true; isSplit = false; statusBarVisible = true;
     renderWorkspace();
     bindToolbar();
-    
-    // ========== MENU HANDLERS ==========
-    document.getElementById('newDocFile').addEventListener('click', () => {
-        if (isTabMode) addTab('Untitled', '');
-        else {
-            const newDoc = createTab('Untitled', '');
-            tabs = [newDoc];
-            focusedTabId = newDoc.id;
-            renderWorkspace();
-        }
-    });
-    document.getElementById('openDocFile').addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.html,.txt,.md';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                let content = ev.target.result;
-                if (file.name.endsWith('.txt')) content = `<pre>${sanitizeToPlainText(content)}</pre>`;
-                if (isTabMode) addTab(file.name, content);
-                else {
-                    const newDoc = createTab(file.name, content);
-                    tabs = [newDoc];
-                    focusedTabId = newDoc.id;
-                    renderWorkspace();
-                }
-            };
-            reader.readAsText(file);
+}
+init();
+
+document.getElementById('newDocFile').addEventListener('click', () => {
+    if (isTabMode) addTab('Untitled', '');
+    else { const newDoc = createTab('Untitled', ''); tabs = [newDoc]; focusedTabId = newDoc.id; renderWorkspace(); }
+});
+document.getElementById('openDocFile').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.html,.txt,.md';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            let content = ev.target.result;
+            if (file.name.endsWith('.txt')) content = `<pre>${sanitizeToPlainText(content)}</pre>`;
+            if (isTabMode) addTab(file.name, content);
+            else { const newDoc = createTab(file.name, content); tabs = [newDoc]; focusedTabId = newDoc.id; renderWorkspace(); }
         };
-        input.click();
-    });
-    
-    // ========== LOGIKA MODAL SAVE & AUTO-DETECT FORMAT ==========
-    const saveModal = document.getElementById('saveModal');
-    const saveFilenameInput = document.getElementById('saveFilenameInput');
-    const saveFormatSelect = document.getElementById('saveFormatSelect');
-    let currentSaveTab = null;
+        reader.readAsText(file);
+    };
+    input.click();
+});
+const saveModal = document.getElementById('saveModal');
+const saveFilenameInput = document.getElementById('saveFilenameInput');
+const saveFormatSelect = document.getElementById('saveFormatSelect');
+const customExtInput = document.getElementById('customExtInput');
+const formatWrapper = document.getElementById('formatWrapper');
+const revertFormatBtn = document.getElementById('revertFormatBtn');
 
-    function detectDocumentFormat(html) {
-        const testHtml = html.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
-        const hasRichText = /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml);
-        return hasRichText ? '.rtf' : '.txt';
+// Logika dinamis: Tampilkan kolom input jika opsi "custom" dipilih
+saveFormatSelect.addEventListener('change', (e) => {
+    if (e.target.value === 'custom') {
+        formatWrapper.classList.add('is-custom');
+        setTimeout(() => customExtInput.focus(), 150); // Tarik fokus setelah animasi
+    } else {
+        formatWrapper.classList.remove('is-custom');
     }
+});
+revertFormatBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    formatWrapper.classList.remove('is-custom');
+    saveFormatSelect.value = '.txt'; // Reset ke default
+    customExtInput.value = '';
+});
+let currentSaveTab = null;
+function detectDocumentFormat(html) {
+    const testHtml = html.replace(/<br\s*\/?>/gi, '').replace(/<\/?div>/gi, '').trim();
+    return /<(b|i|u|ul|ol|li|span|p)[^>]*>/i.test(testHtml) ? '.rtf' : '.txt';
+}
+function openSaveModal(tab, isSaveAs) {
+    currentSaveTab = tab;
+    let baseName = tab.name;
+    let currentExt = '';
+    const lastDot = baseName.lastIndexOf('.');
+    
+    if (lastDot > 0) { 
+        currentExt = baseName.substring(lastDot); 
+        baseName = baseName.substring(0, lastDot); 
+    }
+    
+    saveFilenameInput.value = baseName;
+    
+    // Reset state visual ke default
+    formatWrapper.classList.remove('is-custom');
+    customExtInput.value = '';
 
-    function openSaveModal(tab, isSaveAs) {
-        currentSaveTab = tab;
-        let baseName = tab.name;
-        let currentExt = '';
-        
-        const lastDot = baseName.lastIndexOf('.');
-        if (lastDot > 0) {
-            currentExt = baseName.substring(lastDot);
-            baseName = baseName.substring(0, lastDot);
-        }
-
-        saveFilenameInput.value = baseName;
-
-        if (!isSaveAs && currentExt) {
+    if (!isSaveAs && currentExt) {
+        const optionExists = Array.from(saveFormatSelect.options).some(opt => opt.value === currentExt);
+        if (optionExists) {
             saveFormatSelect.value = currentExt;
+        } else {
+            saveFormatSelect.value = 'custom';
+            customExtInput.value = currentExt;
+            formatWrapper.classList.add('is-custom'); // Paksa slider kustom maju
+			}
         } else {
             saveFormatSelect.value = detectDocumentFormat(tab.contentHTML);
         }
-
-        saveModal.style.display = 'flex';
-        closeAllDropdowns();
-        saveFilenameInput.focus();
-        saveFilenameInput.select();
+    
+    saveModal.style.display = 'flex';
+    closeAllDropdowns();
+    saveFilenameInput.focus();
+    saveFilenameInput.select();
+	
+    const modalBox = document.querySelector('.mac-modal');
+    applyLiquidGlassToElement(modalBox, {
+        radius: 20,
+        bezelWidth: 26,
+        glassThickness: 120,
+        refractiveIndex: 1.8
+    });
+}
+document.getElementById('saveDocFile').addEventListener('click', () => {
+    let tab = !isTabMode ? tabs[0] : (!isSplit ? tabs.find(t => t.id === focusedTabId) : tabs.find(t => t.id === leftTabId));
+    if (tab) openSaveModal(tab, false);
+});
+document.getElementById('saveAsFile').addEventListener('click', () => {
+    let tab = !isTabMode ? tabs[0] : (!isSplit ? tabs.find(t => t.id === focusedTabId) : tabs.find(t => t.id === leftTabId));
+    if (tab) openSaveModal(tab, true);
+});
+document.getElementById('cancelSaveBtn').addEventListener('click', () => { saveModal.style.display = 'none'; });
+document.getElementById('confirmSaveBtn').addEventListener('click', () => {
+    let baseName = saveFilenameInput.value.trim() || 'Untitled';
+    let ext = saveFormatSelect.value;
+    
+    // Jika format kustom dipilih, ambil nilai dari kolom input
+    if (ext === 'custom') {
+        ext = customExtInput.value.trim();
+        // Pastikan pengguna mengetikkan titik (jika lupa)
+        if (ext && !ext.startsWith('.')) ext = '.' + ext;
     }
 
-    document.getElementById('saveDocFile').addEventListener('click', () => {
-        let tab = !isTabMode ? tabs[0] : (!isSplit ? tabs.find(t => t.id === focusedTabId) : tabs.find(t => t.id === leftTabId));
-        if (tab) openSaveModal(tab, false);
-    });
+    const finalName = baseName + ext;
+    currentSaveTab.name = finalName;
+    let contentToSave = currentSaveTab.contentHTML;
+    
+    // Logika Pembersihan HTML
+    if (ext === '.rtf') {
+        const plain = sanitizeToPlainText(contentToSave);
+        contentToSave = `{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset0 -apple-system;}}\n{\\*\\generator TextEdit Web;}\\pard\\sa200\\sl276\\slmult1\\f0\\fs22\\lang9 ${plain.replace(/\n/g, '\\par\n')}}`;
+    } else if (ext !== '.html') {
+        // Ekstensi kustom (seperti .json, .csv) dan .txt / .md akan diubah ke Plain Text murni
+        contentToSave = sanitizeToPlainText(contentToSave);
+    }
 
-    document.getElementById('saveAsFile').addEventListener('click', () => {
-        let tab = !isTabMode ? tabs[0] : (!isSplit ? tabs.find(t => t.id === focusedTabId) : tabs.find(t => t.id === leftTabId));
-        if (tab) openSaveModal(tab, true);
-    });
+    const blob = new Blob([contentToSave], {type: 'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = finalName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    saveModal.style.display = 'none';
+    renderWorkspace();
+});
+document.getElementById('renameFile').addEventListener('click', () => {
+    let tab = null;
+    if (!isTabMode) tab = tabs[0];
+    else if (!isSplit) tab = tabs.find(t => t.id === focusedTabId);
+    else tab = tabs.find(t => t.id === leftTabId);
+    if (tab) {
+        const newName = prompt('Rename document:', tab.name);
+        if (newName) renameTab(tab.id, newName);
+    }
+});
+document.getElementById('moveToFile').addEventListener('click', () => alert('Move To: simulasi'));
+document.getElementById('closeWindowFile').addEventListener('click', () => alert('Tutup tab browser'));
 
-    document.getElementById('cancelSaveBtn').addEventListener('click', () => {
-        saveModal.style.display = 'none';
-    });
-
-    document.getElementById('confirmSaveBtn').addEventListener('click', () => {
-        let baseName = saveFilenameInput.value.trim() || 'Untitled';
-        let ext = saveFormatSelect.value;
-        
-        const finalName = baseName + ext;
-        currentSaveTab.name = finalName;
-        
-        let contentToSave = currentSaveTab.contentHTML;
-        
-        if (ext === '.txt' || ext === '.md') {
-            contentToSave = sanitizeToPlainText(contentToSave);
-        } else if (ext === '.rtf') {
-            const plain = sanitizeToPlainText(contentToSave);
-            contentToSave = `{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat{\\fonttbl{\\f0\\fnil\\fcharset0 -apple-system;}}\n{\\*\\generator TextEdit Web;}\\pard\\sa200\\sl276\\slmult1\\f0\\fs22\\lang9 ${plain.replace(/\n/g, '\\par\n')}}`;
+// ========== LOGIKA MENU EDIT (BARU) ==========
+// Helper untuk mencari editor yang sedang aktif (Mendukung Split View & Tab Mode)
+function getActiveEditor() {
+    let editorDiv = null;
+    if (!isTabMode || !isSplit) {
+        editorDiv = document.querySelector('.rich-editor');
+    } else {
+        const focused = document.activeElement;
+        if (focused && focused.classList && focused.classList.contains('rich-editor')) {
+            editorDiv = focused;
+        } else {
+            editorDiv = document.querySelector('.rich-editor');
         }
+    }
+    return editorDiv;
+}
 
-        const blob = new Blob([contentToSave], {type: 'text/plain'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = finalName;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        
-        saveModal.style.display = 'none';
+// Array daftar perintah sederhana untuk di-loop
+const editCommands = [
+    { id: 'editUndo', cmd: 'undo' },
+    { id: 'editRedo', cmd: 'redo' },
+    { id: 'editCut', cmd: 'cut' },
+    { id: 'editCopy', cmd: 'copy' },
+    { id: 'selectAll', cmd: 'selectAll' }
+];
+
+editCommands.forEach(action => {
+    const btn = document.getElementById(action.id);
+    if (btn) {
+        // Menggunakan pointerdown + preventDefault untuk menghindari hilangnya kursor dari editor
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const editor = getActiveEditor();
+            if (editor) {
+                editor.focus(); // Pastikan fokus ditarik kembali sebelum menjalankan aksi
+                document.execCommand(action.cmd);
+                editor.dispatchEvent(new Event('input')); // Paksa sistem menyadari teks telah berubah
+            }
+            closeAllDropdowns();
+        });
+    }
+});
+
+// Penanganan khusus untuk fungsi Paste (karena butuh sanitize API Clipboard)
+const handlePasteAction = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const editor = getActiveEditor();
+    if (editor) {
+        editor.focus();
+        try {
+            const text = await navigator.clipboard.readText();
+            document.execCommand('insertText', false, sanitizeToPlainText(text));
+            editor.dispatchEvent(new Event('input'));
+        } catch (err) {
+            console.error('Gagal paste:', err);
+            alert('Akses clipboard diblokir. Gunakan fungsi paste dari sistem operasi.');
+        }
+    }
+    closeAllDropdowns();
+};
+
+document.getElementById('editPaste').addEventListener('pointerdown', handlePasteAction);
+document.getElementById('pasteMatchStyle').addEventListener('pointerdown', handlePasteAction);
+// ===========================================
+
+document.getElementById('makePlainText').addEventListener('click', () => {
+    let tab = null;
+    if (!isTabMode) tab = tabs[0];
+    else if (!isSplit) tab = tabs.find(t => t.id === focusedTabId);
+    else tab = tabs.find(t => t.id === leftTabId);
+    if (tab) {
+        const plain = sanitizeToPlainText(tab.contentHTML);
+        tab.contentHTML = `<pre>${plain}</pre>`;
         renderWorkspace();
-    });
-    
-    document.getElementById('renameFile').addEventListener('click', () => {
-        let tab = null;
-        if (!isTabMode) tab = tabs[0];
-        else if (!isSplit) tab = tabs.find(t => t.id === focusedTabId);
-        else tab = tabs.find(t => t.id === leftTabId);
-        if (tab) {
-            const newName = prompt('Rename document:', tab.name);
-            if (newName) renameTab(tab.id, newName);
-        }
-    });
-    document.getElementById('moveToFile').addEventListener('click', () => alert('Move To: simulasi'));
-    document.getElementById('closeWindowFile').addEventListener('click', () => alert('Tutup tab browser'));
-    document.getElementById('editUndo').addEventListener('click', () => document.execCommand('undo'));
-    document.getElementById('editRedo').addEventListener('click', () => document.execCommand('redo'));
-    document.getElementById('editCut').addEventListener('click', () => document.execCommand('cut'));
-    document.getElementById('editCopy').addEventListener('click', () => document.execCommand('copy'));
-    document.getElementById('editPaste').addEventListener('click', async () => {
-        const text = await navigator.clipboard.readText();
-        const clean = sanitizeToPlainText(text);
-        document.execCommand('insertText', false, clean);
-    });
-    document.getElementById('pasteMatchStyle').addEventListener('click', async () => {
-        const text = await navigator.clipboard.readText();
-        const clean = sanitizeToPlainText(text);
-        document.execCommand('insertText', false, clean);
-    });
-    document.getElementById('selectAll').addEventListener('click', () => document.execCommand('selectAll'));
-    
-    document.getElementById('makePlainText').addEventListener('click', () => {
-        let tab = null;
-        if (!isTabMode) tab = tabs[0];
-        else if (!isSplit) tab = tabs.find(t => t.id === focusedTabId);
-        else tab = tabs.find(t => t.id === leftTabId);
-        if (tab) {
-            const plain = sanitizeToPlainText(tab.contentHTML);
-            tab.contentHTML = `<pre>${plain}</pre>`;
-            renderWorkspace();
-        }
-    });
-    
-    // PERBAIKAN: Gunakan variabel isWrapLines secara global
-    document.getElementById('toggleWrapLines').addEventListener('click', () => {
-        isWrapLines = !isWrapLines;
-        document.querySelectorAll('.rich-editor').forEach(el => {
-            el.style.whiteSpace = isWrapLines ? 'pre-wrap' : 'pre';
-        });
-    });
-    
-    let fontSize = 14;
-    document.getElementById('fontBigger').addEventListener('click', () => {
-        fontSize = Math.min(28, fontSize+2);
-        document.querySelectorAll('.rich-editor').forEach(el => el.style.fontSize = fontSize+'px');
-    });
-    document.getElementById('fontSmaller').addEventListener('click', () => {
-        fontSize = Math.max(10, fontSize-2);
-        document.querySelectorAll('.rich-editor').forEach(el => el.style.fontSize = fontSize+'px');
-    });
-    document.getElementById('aboutApp').addEventListener('click', () => alert('TextEdit macOS Tahoe\nResponsif & List fixed'));
-    document.getElementById('quitApp').addEventListener('click', () => alert('Tutup browser tab'));
-    document.getElementById('minimizeWindow').addEventListener('click', () => alert('Minimize simulasi'));
-    document.getElementById('zoomWindow').addEventListener('click', () => { if (document.fullscreenEnabled) document.documentElement.requestFullscreen(); });
-    document.getElementById('helpSearch').addEventListener('click', () => alert('Gunakan ribbon & context menu.'));
-    
-    setInterval(() => updateStats(), 500);
-
-    // ========== MOUSE SCROLL HORIZONTAL (DESKTOP) ==========
-    function enableMouseScroll(element) {
-        if (!element) return;
-        element.addEventListener('wheel', (e) => {
-            if (e.deltaY !== 0) {
-                e.preventDefault();
-                element.scrollLeft += e.deltaY;
-            }
-        });
     }
-    enableMouseScroll(document.querySelector('.global-menu-bar'));
-    enableMouseScroll(document.querySelector('.toolbar'));
-    enableMouseScroll(document.querySelector('.tab-bar'));
-    
-    // ========== DROPDOWN EVENT HANDLER (KLIK UNTUK BUKA) ==========
-    const menuItems = document.querySelectorAll('.global-menu-bar .menu-item');
-    const globalMenuBar = document.querySelector('.global-menu-bar');
+});
+document.getElementById('toggleWrapLines').addEventListener('click', () => {
+    isWrapLines = !isWrapLines;
+    document.querySelectorAll('.rich-editor').forEach(el => el.style.whiteSpace = isWrapLines ? 'pre-wrap' : 'pre');
+});
+let fontSize = 14;
+document.getElementById('fontBigger').addEventListener('click', () => {
+    fontSize = Math.min(28, fontSize+2);
+    document.querySelectorAll('.rich-editor').forEach(el => el.style.fontSize = fontSize+'px');
+});
+document.getElementById('fontSmaller').addEventListener('click', () => {
+    fontSize = Math.max(10, fontSize-2);
+    document.querySelectorAll('.rich-editor').forEach(el => el.style.fontSize = fontSize+'px');
+});
+document.getElementById('aboutApp').addEventListener('click', () => alert('TextEdit macOS Tahoe\nResponsif & List fixed'));
+document.getElementById('quitApp').addEventListener('click', () => alert('Tutup browser tab'));
+document.getElementById('minimizeWindow').addEventListener('click', () => alert('Minimize simulasi'));
+document.getElementById('zoomWindow').addEventListener('click', () => { if (document.fullscreenEnabled) document.documentElement.requestFullscreen(); });
+document.getElementById('helpSearch').addEventListener('click', () => alert('Gunakan ribbon & context menu.'));
+setInterval(() => updateStats(), 500);
+function enableMouseScroll(el) { if (el) el.addEventListener('wheel', (e) => { if (e.deltaY !== 0) { e.preventDefault(); el.scrollLeft += e.deltaY; } }); }
+enableMouseScroll(document.querySelector('.global-menu-bar'));
+enableMouseScroll(document.querySelector('.toolbar'));
+enableMouseScroll(document.querySelector('.tab-bar'));
 
-    const dropdownMap = new Map();
-    menuItems.forEach(item => {
-        const dropdown = item.querySelector('.dropdown');
-        if (!dropdown) return;
-        
-        document.body.appendChild(dropdown);
-        dropdown.style.zIndex = '9999';
-        dropdownMap.set(item, dropdown);
+// ========== DROPDOWN EVENT HANDLER (FIXED VERSION) ==========
+const menuItems = document.querySelectorAll('.global-menu-bar .menu-item');
+const globalMenuBar = document.querySelector('.global-menu-bar');
+const dropdownMap = new Map();
+menuItems.forEach(item => {
+    const dropdown = item.querySelector('.dropdown');
+    if (!dropdown) return;
+    document.body.appendChild(dropdown);
+    dropdownMap.set(item, dropdown);
+});
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown.show').forEach(d => d.classList.remove('show'));
+}
+menuItems.forEach(item => {
+    const dropdown = dropdownMap.get(item);
+    if (!dropdown) return;
+
+    // Tambahan vital untuk menangkis hilangnya fokus dari editor saat menu bar disentuh/diklik
+    item.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); 
     });
 
-    function closeAllDropdowns() {
-        document.querySelectorAll('.dropdown.show').forEach(d => {
-            d.classList.remove('show');
-        });
-    }
-
-    menuItems.forEach(item => {
-        const dropdown = dropdownMap.get(item);
-        if (!dropdown) return;
-
-        item.addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            
-            const isShowing = dropdown.classList.contains('show');
-
-            if (isShowing) {
-                closeAllDropdowns();
-            } else {
-                closeAllDropdowns(); 
-                dropdown.classList.add('show');
-                
-                const rect = item.getBoundingClientRect();
-                dropdown.style.position = 'fixed';
-                dropdown.style.top = `${rect.bottom + 4}px`;
-                
-                let leftPos = rect.left;
-                const dropdownWidth = dropdown.offsetWidth;
-                
-                if (leftPos + dropdownWidth > window.innerWidth) {
-                    leftPos = window.innerWidth - dropdownWidth - 8; 
-                }
-                
-                dropdown.style.left = `${leftPos}px`;
-            }
-        });
-    });
-
-    document.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isShowing = dropdown.classList.contains('show');
         closeAllDropdowns();
-    });
+        
+        if (!isShowing) {
+            // 1. Tampilkan dan beri posisi terlebih dahulu (Trigger Layout)
+            dropdown.classList.add('show');
+            const rect = item.getBoundingClientRect();
+            
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = `${rect.bottom + 4}px`;
+            
+            let leftPos = rect.left;
+            const dropdownWidth = dropdown.offsetWidth; // Mengambil lebar real
+            if (leftPos + dropdownWidth > window.innerWidth) {
+                leftPos = window.innerWidth - dropdownWidth - 8;
+            }
+            dropdown.style.left = `${leftPos}px`;
+            dropdown.style.right = 'auto';
 
-    globalMenuBar.addEventListener('scroll', closeAllDropdowns, { passive: true });
-</script>
-</body>
-</html>
+            // 2. Terapkan Engine Liquid Glass setelah dimensi stabil
+            applyLiquidGlassToElement(dropdown, { bezelWidth: 26, glassThickness: 120, refractiveIndex: 2.0 });
+        }
+    });
+});
+document.addEventListener('click', () => closeAllDropdowns());
+globalMenuBar.addEventListener('scroll', closeAllDropdowns, { passive: true });
+
+// ---------- LIQUID GLASS ENGINE ----------
+const SurfaceEquations = { convex_squircle: (x) => Math.pow(1 - Math.pow(1 - x, 4), 1 / 4) };
+class Spring { 
+    constructor(v, s = 300, d = 20) { this.value = v; this.target = v; this.velocity = 0; this.stiffness = s; this.damping = d; } 
+    setTarget(t) { this.target = t; } 
+    update(dt) { const f = (this.target - this.value) * this.stiffness; const df = this.velocity * this.damping; this.velocity += (f - df) * dt; this.value += this.velocity * dt; return this.value; } 
+    isSettled() { return Math.abs(this.target - this.value) < 0.001 && Math.abs(this.velocity) < 0.001; } 
+}
+function applySpringPress(selector) {
+    document.querySelectorAll(selector).forEach(btn => {
+        const ss = new Spring(1, 1800, 55);
+        let pressed = false, raf = null;
+        function loop() { const dt = Math.min(0.032,1/60); ss.setTarget(pressed?0.88:1); const sc = ss.update(dt); btn.style.transform = `scale(${sc})`; if (!ss.isSettled()) raf = requestAnimationFrame(loop); else raf = null; }
+        btn.addEventListener('pointerdown', ()=>{ pressed=true; if(!raf) raf = requestAnimationFrame(loop); });
+        btn.addEventListener('pointerup', ()=>{ pressed=false; if(!raf) raf = requestAnimationFrame(loop); });
+        btn.addEventListener('pointerleave', ()=>{ pressed=false; if(!raf) raf = requestAnimationFrame(loop); });
+    });
+}
+applySpringPress('.tool-btn');
+applySpringPress('.mac-modal-actions button');
+
+function buildDisplacementMap(width, height, radius, bezelWidth, glassThickness, refractiveIndex) {
+    const w = width, h = height, rad = radius, bw = bezelWidth, gt = glassThickness, ri = refractiveIndex;
+    const profile = [];
+    const steps = 128;
+    for (let i = 0; i <= steps; i++) {
+        const x = i / steps;
+        const y = SurfaceEquations.convex_squircle(x);
+        const dx = x < 1 ? 0.0001 : -0.0001;
+        const d = (SurfaceEquations.convex_squircle(Math.max(0, Math.min(1, x + dx))) - y) / dx;
+        const m = Math.sqrt(d * d + 1);
+        const n = [-d / m, -1 / m];
+        const dt = n[1];
+        const k = 1 - (1 / ri) ** 2 * (1 - dt * dt);
+        if (k >= 0) {
+            const rf0 = -((1 / ri) * dt + Math.sqrt(k)) * n[0];
+            const rf1 = (1 / ri) - ((1 / ri) * dt + Math.sqrt(k)) * n[1];
+            profile.push(rf0 * ((y * bw + gt) / rf1));
+        } else { profile.push(0); }
+    }
+    const maxDisp = Math.max(...profile.map(Math.abs)) * 2;
+    const img = new ImageData(w, h);
+    for (let i = 0; i < img.data.length; i += 4) { img.data[i] = 128; img.data[i+1] = 128; img.data[i+3] = 255; }
+    const rSq = rad * rad, rp1Sq = (rad + 1) ** 2, rmBwSq = Math.max(0, rad - bw) ** 2;
+    const wB = w - rad * 2, hB = h - rad * 2;
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const idx = (y * w + x) * 4;
+            const dx = x < rad ? x - rad : x >= w - rad ? x - rad - wB : 0;
+            const dy = y < rad ? y - rad : y >= h - rad ? y - rad - hB : 0;
+            const dSq = dx*dx + dy*dy;
+            if (dSq <= rp1Sq && dSq >= rmBwSq) {
+                const dist = Math.sqrt(dSq);
+                const op = dSq < rSq ? 1 : 1 - (dist - rad) / (Math.sqrt(rp1Sq) - rad);
+                const bIdx = Math.floor(Math.max(0, Math.min(1, (rad - dist) / bw)) * profile.length);
+                const dVal = profile[Math.min(bIdx, profile.length - 1)] || 0;
+                const dX = maxDisp > 0 ? (-(dist > 0 ? dx / dist : 0) * dVal) / maxDisp : 0;
+                const dY = maxDisp > 0 ? (-(dist > 0 ? dy / dist : 0) * dVal) / maxDisp : 0;
+                img.data[idx] = Math.max(0, Math.min(255, 128 + dX * 127 * op));
+                img.data[idx+1] = Math.max(0, Math.min(255, 128 + dY * 127 * op));
+            }
+			else if (dSq < rmBwSq) {
+                // --- LOGIKA BARU: DISTORSI PERBESARAN TENGAH (MAGNIFICATION) ---
+                // 1. Cari titik pusat absolut dari elemen kaca
+                const cx = w / 2;
+                const cy = h / 2;
+                const dxCenter = x - cx;
+                const dyCenter = y - cy;
+                
+                // 2. Kekuatan perbesaran lensa (Ubah angka ini: 0.15 tipis, 0.4 sangat kuat/melengkung tajam)
+                const magStrength = 0.15; 
+                
+                // 3. Blend fade-out halus agar menyatu dengan bezel tanpa retakan (seam) di batasnya
+                const distInner = Math.sqrt(dSq);
+                const innerRad = Math.max(0, rad - bw);
+                const blend = innerRad > 0 ? Math.max(0, 1 - (distInner / innerRad)) : 1;
+                
+                // 4. Efek cembung: tarik arah pergeseran piksel ke arah pusat elemen
+                const dX = maxDisp > 0 ? (-dxCenter / cx) * magStrength * blend : 0;
+                const dY = maxDisp > 0 ? (-dyCenter / cy) * magStrength * blend : 0;
+                
+                // 5. Tulis pergeseran ke dalam map warna (Red untuk sumbu X, Green untuk sumbu Y)
+                img.data[idx] = Math.max(0, Math.min(255, 128 + dX * 127));
+                img.data[idx+1] = Math.max(0, Math.min(255, 128 + dY * 127));
+            }
+        }
+    }
+    return { imageData: img, maxDisp };
+}
+function buildSpecularMap(width, height, radius, bezelWidth) {
+    const w = width, h = height, rad = radius, bw = bezelWidth;
+    const img = new ImageData(w, h);
+    const rSq = rad * rad, rp1Sq = (rad + 1) ** 2, rmSSq = Math.max(0, (rad - 1.5) ** 2);
+    const wB = w - rad * 2, hB = h - rad * 2;
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const dx = x < rad ? x - rad : x >= w - rad ? x - rad - wB : 0;
+            const dy = y < rad ? y - rad : y >= h - rad ? y - rad - hB : 0;
+            const dSq = dx*dx + dy*dy;
+            if (dSq <= rp1Sq && dSq >= rmSSq) {
+                const dist = Math.sqrt(dSq);
+                const op = dSq < rSq ? 1 : 1 - (dist - rad) / (Math.sqrt(rp1Sq) - rad);
+                let val = 0;
+                if (rad - dist >= 0 && rad - dist <= 1.5) val = (rad - dist) / 1.5;
+                const c = 160 * (1 - (1 - val) ** 2) * op;
+                const idx = (y * w + x) * 4;
+                img.data[idx] = img.data[idx+1] = img.data[idx+2] = c;
+                img.data[idx+3] = c;
+            }
+        }
+    }
+    return img;
+}
+function imageDataToDataURL(imgData) {
+    const canvas = document.createElement('canvas');
+    canvas.width = imgData.width;
+    canvas.height = imgData.height;
+    canvas.getContext('2d').putImageData(imgData, 0, 0);
+    return canvas.toDataURL();
+}
+const liquidGlassCache = new WeakMap();
+function applyLiquidGlassToElement(el, options = {}) {
+    if (!el) return;
+    
+    // PERBAIKAN 1: Gunakan offsetWidth/Height alih-alih getBoundingClientRect 
+    // agar mendapat angka pixel bulat yang akurat dengan border elemen
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
+    if (width === 0 || height === 0) return;
+
+    let radius = options.radius;
+    if (!radius) {
+        const borderRadius = window.getComputedStyle(el).borderRadius;
+        const match = borderRadius.match(/(\d+)px/);
+        radius = match ? parseInt(match[1], 10) : Math.min(width, height) / 2;
+    }
+    const bezelWidth = options.bezelWidth || 15;
+    const glassThickness = options.glassThickness || 60;
+    const refractiveIndex = options.refractiveIndex || 1.6;
+
+    const rad = Math.min(radius, width / 2, height / 2);
+
+    const disp = buildDisplacementMap(width, height, rad, bezelWidth, glassThickness, refractiveIndex);
+    const spec = buildSpecularMap(width, height, rad, bezelWidth);
+    const dispUrl = imageDataToDataURL(disp.imageData);
+    const specUrl = imageDataToDataURL(spec);
+
+    let svg = document.querySelector('#liquidGlassDynamicSvg');
+    if (!svg) {
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = 'liquidGlassDynamicSvg';
+        svg.style.position = 'absolute';
+        svg.style.width = '0';
+        svg.style.height = '0';
+        svg.style.pointerEvents = 'none';
+        document.body.appendChild(svg);
+    }
+
+    const filterId = `liquidGlass-${Math.random().toString(36).substr(2, 8)}`;
+    const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+    filter.id = filterId;
+    filter.setAttribute('x', '-50%');
+    filter.setAttribute('y', '-50%');
+    filter.setAttribute('width', '200%');
+    filter.setAttribute('height', '200%');
+    filter.setAttribute('color-interpolation-filters', 'sRGB');
+
+    const blur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+    blur.setAttribute('in', 'SourceGraphic');
+    blur.setAttribute('stdDeviation', '0.5');
+    blur.setAttribute('result', 'blurred');
+
+    const imgDisp = document.createElementNS('http://www.w3.org/2000/svg', 'feImage');
+    imgDisp.setAttribute('href', dispUrl);
+    // PERBAIKAN 2: Paksa x dan y ke 0 agar titik koordinat feImage 
+    // mutlak terkunci di pojok kiri atas elemen dropdown
+    imgDisp.setAttribute('x', '0'); 
+    imgDisp.setAttribute('y', '0'); 
+    imgDisp.setAttribute('width', width.toString());
+    imgDisp.setAttribute('height', height.toString());
+    imgDisp.setAttribute('preserveAspectRatio', 'none');
+    imgDisp.setAttribute('result', 'displacement_map');
+
+    const displace = document.createElementNS('http://www.w3.org/2000/svg', 'feDisplacementMap');
+    displace.setAttribute('in', 'blurred');
+    displace.setAttribute('in2', 'displacement_map');
+    displace.setAttribute('scale', Math.min(80, disp.maxDisp * 2.5).toString());
+    displace.setAttribute('xChannelSelector', 'R');
+    displace.setAttribute('yChannelSelector', 'G');
+    displace.setAttribute('result', 'displaced');
+
+    const saturate = document.createElementNS('http://www.w3.org/2000/svg', 'feColorMatrix');
+    saturate.setAttribute('in', 'displaced');
+    saturate.setAttribute('type', 'saturate');
+    saturate.setAttribute('values', '1.3');
+    saturate.setAttribute('result', 'displaced_saturated');
+
+    const imgSpec = document.createElementNS('http://www.w3.org/2000/svg', 'feImage');
+    imgSpec.setAttribute('href', specUrl);
+    // PERBAIKAN 3: Kunci juga posisi Specular (cahaya pantulan frame)
+    imgSpec.setAttribute('x', '0'); 
+    imgSpec.setAttribute('y', '0'); 
+    imgSpec.setAttribute('width', width.toString());
+    imgSpec.setAttribute('height', height.toString());
+    imgSpec.setAttribute('preserveAspectRatio', 'none');
+    imgSpec.setAttribute('result', 'specular_layer');
+
+    const compTransfer = document.createElementNS('http://www.w3.org/2000/svg', 'feComponentTransfer');
+    compTransfer.setAttribute('in', 'specular_layer');
+    compTransfer.setAttribute('result', 'specular_faded');
+    const feFuncA = document.createElementNS('http://www.w3.org/2000/svg', 'feFuncA');
+    feFuncA.setAttribute('type', 'linear');
+    feFuncA.setAttribute('slope', '1');
+    compTransfer.appendChild(feFuncA);
+
+    const blend = document.createElementNS('http://www.w3.org/2000/svg', 'feBlend');
+    blend.setAttribute('in', 'specular_faded');
+    blend.setAttribute('in2', 'displaced_saturated');
+    blend.setAttribute('mode', 'screen');
+
+    filter.appendChild(blur);
+    filter.appendChild(imgDisp);
+    filter.appendChild(displace);
+    filter.appendChild(saturate);
+    filter.appendChild(imgSpec);
+    filter.appendChild(compTransfer);
+    filter.appendChild(blend);
+
+    svg.appendChild(filter);
+
+    const oldFilterId = liquidGlassCache.get(el);
+    if (oldFilterId) {
+        const oldFilter = svg.querySelector(`#${oldFilterId}`);
+        if (oldFilter) oldFilter.remove();
+    }
+    liquidGlassCache.set(el, filterId);
+
+    // Terapkan ke style elemen
+	setTimeout(() => {
+		el.style.backgroundColor = 'rgba(20, 20, 30, 0.4)';
+		el.style.border = '1px solid rgba(255, 255, 255, 0.25)';
+		el.style.boxShadow = '0 12px 28px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.3), inset 0 0 12px rgba(255,255,255,0.08)';
+		el.style.backdropFilter = `url(#${filterId}) saturate(150%) brightness(1.05) blur(2px)`;
+		el.style.webkitBackdropFilter = `url(#${filterId}) saturate(150%) brightness(1.05) blur(2px)`;
+	}, 10);
+}
+window.addEventListener('resize', () => {
+    document.querySelectorAll('.dropdown').forEach(dd => {
+        applyLiquidGlassToElement(dd, { bezelWidth: 15, glassThickness: 60, refractiveIndex: 1.6 });
+    });
+});
+
+// ========== GLOBAL KEYBOARD SHORTCUTS ==========
+document.addEventListener('keydown', (e) => {
+    // Membaca jenis OS untuk kecocokan tombol (Meta = Command Mac, Ctrl = Windows)
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+    if (cmdOrCtrl) {
+        const key = e.key.toLowerCase();
+        
+        // 1. EDIT COMMANDS (Diserahkan ke bawaan OS untuk keandalan API Clipboard)
+        // Kita hanya memicu sinkronisasi perhitungan karakter dan UI
+        if (['z', 'x', 'c', 'v', 'a'].includes(key)) {
+            setTimeout(() => {
+                const editor = getActiveEditor();
+                if (editor) {
+                    editor.dispatchEvent(new Event('input')); 
+                }
+            }, 50); // Jeda tipis menunggu aksi OS selesai
+            return;
+        }
+
+        // 2. FILE COMMANDS (Mencegah fungsi bawaan browser)
+        if (key === 's') {
+            e.preventDefault(); // Mencegah popup "Save Page As" bawaan Chrome/Safari
+            let tab = !isTabMode ? tabs[0] : (!isSplit ? tabs.find(t => t.id === focusedTabId) : tabs.find(t => t.id === leftTabId));
+            if (tab) openSaveModal(tab, false);
+        } else if (key === 'o') {
+            e.preventDefault();
+            document.getElementById('openDocFile').click();
+        } else if (key === 'n') {
+            e.preventDefault();
+            document.getElementById('newDocFile').click();
+        }
+    }
+});
 </script>
 </body>
 </html>
