@@ -749,23 +749,40 @@
 <script>
 // ========== UTILITIES ==========
 function sanitizeToPlainText(html) {
-    // Konversi eksplisit elemen block & <br> → \n SEBELUM strip tag
-    // innerText di detached element tidak reliable di semua browser
-    return html
+    // STEP 1: Tandai setiap pembuka <div> atau <p> yang BUKAN div pertama
+    // sebagai newline — ini menangani pola mobile browser
+    // Pola: konten....<div>baris baru</div>
+    html = html.replace(/<div>/gi, '\n');
+    html = html.replace(/<p>/gi, '\n');
+
+    // STEP 2: Konversi penutup block & <br> → \n
+    html = html
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n')
         .replace(/<\/div>/gi, '\n')
         .replace(/<\/li>/gi, '\n')
-        .replace(/<li[^>]*>/gi, '')
-        .replace(/<[^>]+>/g, '')       // hapus semua tag sisanya
+        .replace(/<li[^>]*>/gi, '');
+
+    // STEP 3: Strip semua tag HTML sisanya
+    html = html.replace(/<[^>]+>/g, '');
+
+    // STEP 4: Decode HTML entities
+    html = html
         .replace(/&nbsp;/g, ' ')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&amp;/g, '&')
         .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/\n{3,}/g, '\n\n')    // max 2 baris kosong berturut-turut
-        .replace(/^\n+/, '');           // hapus newline awal
+        .replace(/&#39;/g, "'");
+
+    // STEP 5: Normalisasi — hapus newline ganda yang muncul dari double-close tag
+    // tapi JANGAN potong lebih dari 2 (user bisa sengaja bikin spasi kosong)
+    html = html.replace(/\n\n\n+/g, '\n\n');
+
+    // STEP 6: Hapus newline di paling awal dan akhir
+    html = html.replace(/^\n+/, '').replace(/\n+$/, '');
+
+    return html;
 }
 
 // ========== DATA MODEL ==========
